@@ -86,3 +86,18 @@ Run `supabase/add-todo.sql` in Supabase → SQL Editor. This creates the shared 
    - Redirect URLs: `https://acai-carioca-studio-public.vercel.app/**`, `https://*-bianca-team1.vercel.app/**` (Vercel previews) and `http://localhost:3000/**`.
 4. The Google consent screen links to the public Privacy Policy at `/privacy` (`app/privacy/page.tsx`).
 5. A new Google user still needs a `workspace_members` row (see step 3) before they can see any content.
+
+## 9. Approval workflow
+Run `supabase/add-approvals.sql` once in Supabase → SQL Editor (already applied to the production project on Nov 25, 2026).
+
+- Statuses: Idea → In production → Ready → **Awaiting approval** → **Approved** / **Changes requested** → Scheduled → Published.
+- Only the **owner** and members with the **approver** role can approve or request changes (enforced in the database).
+- Approvers can see everything but cannot create, edit or delete posts or tasks.
+- The **Approvals** tab shows two weeks of content at a time, with "Approve all" for the period and per-post comments.
+
+## 10. Team management (inside the app)
+Run `supabase/add-team-management.sql` once in Supabase → SQL Editor (already applied to the production project on Nov 25, 2026).
+
+- Anyone who signs in without access sees an "Almost there" screen and is added to **Access requests** automatically.
+- The owner (and admins) open the **Team** tab to give access (Editor, Approver, Viewer or Admin), change roles, remove people or decline requests.
+- The owner's own access cannot be changed or removed from the app.
