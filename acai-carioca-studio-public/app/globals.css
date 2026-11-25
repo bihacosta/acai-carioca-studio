@@ -8,3 +8,22 @@
 .legalShell{min-height:100vh;background:var(--cream);padding:60px 5%;display:flex;justify-content:center}.legalCard{background:var(--paper);width:min(760px,100%);padding:48px;border:1px solid var(--line);line-height:1.65;font-size:14px}.legalCard h1{font:400 43px/1.08 'Playfair Display',serif;color:var(--wine);letter-spacing:-1.5px;margin:12px 0}.legalCard h2{font:400 22px 'Playfair Display',serif;color:var(--wine);margin:32px 0 8px}.legalCard ul{padding-left:20px}.legalCard li{margin:6px 0}.legalCard a{color:var(--wine2)}.legalBack{margin-top:40px;font-size:12px}
 .legalLink{margin-top:22px}.legalLink a{color:var(--muted)}
 .orDivider{display:flex;align-items:center;gap:12px;margin:20px 0 14px;color:var(--muted);font-size:10px;letter-spacing:2px;text-transform:uppercase}.orDivider:before,.orDivider:after{content:"";flex:1;border-top:1px solid var(--line)}.googleButton{width:100%;padding:12px 17px;background:#fffdfa;border:1px solid var(--line);color:var(--wine);font-size:11px;letter-spacing:1px;text-transform:uppercase}.googleButton:hover{border-color:var(--wine2)}.googleButton:disabled{opacity:.6}
+/* Approvals */
+.navBadge{margin-left:auto;background:var(--wine);color:#fffaf1;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px}
+.reviewNav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.reviewNav .secondary{padding:9px 12px}
+.approveAllBar{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;background:#f3ebe0;border:1px solid var(--line);padding:14px 18px;margin-bottom:18px;font-size:13px;color:var(--wine)}
+.reviewList{display:flex;flex-direction:column;gap:14px}
+.reviewCard{display:grid;grid-template-columns:170px 1fr;gap:20px;background:#fffdfa;border:1px solid var(--line);padding:16px}
+.reviewCard img{width:170px;height:170px;object-fit:cover;cursor:zoom-in;background:var(--sand)}
+.reviewBody h3{font:400 22px 'Playfair Display',serif;color:var(--wine);margin:6px 0 2px}
+.reviewCaption{white-space:pre-wrap;font-size:13px;line-height:1.55;margin:10px 0}
+.previousNote{display:flex;gap:6px;align-items:flex-start;font-size:11px;color:#8d5148;background:#f7ece6;padding:8px 10px;margin:0 0 10px}
+.reviewActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.changesForm{display:flex;flex-direction:column;gap:10px;margin-top:12px}.changesForm textarea{width:100%;border:1px solid var(--line);padding:10px;background:var(--paper)}
+.reviewedHead{margin-top:42px}
+.statusPill{font-size:10px;letter-spacing:.5px;text-transform:uppercase;padding:5px 9px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}.statusPill.ok{color:var(--green);border-color:#c9d6b6}.statusPill.warn{color:#8d5148;border-color:#e2c2b6}
+.feedbackBox{display:flex;gap:10px;align-items:flex-start;background:#eef2e7;border:1px solid #d4ddc5;padding:12px 14px;color:var(--ink);font-size:12px}.feedbackBox.changes{background:#f7ece6;border-color:#e2c2b6}.feedbackBox p{margin:4px 0;white-space:pre-wrap}.feedbackBox small{color:var(--muted)}
+.previewImage{width:100%;max-height:360px;object-fit:contain;background:var(--sand)}
+.plainFieldset{border:0;padding:0;margin:0;min-width:0;display:flex;flex-direction:column;gap:17px}.plainFieldset:disabled select,.plainFieldset:disabled input,.plainFieldset:disabled textarea{opacity:1;color:var(--ink);background:#fbf7f1}
+.dayPost.awaitingPost{box-shadow:inset 3px 0 0 #c9973a}.dayPost.changesPost{box-shadow:inset 3px 0 0 #b5543f}.dayPost.approvedPost{box-shadow:inset 3px 0 0 var(--green)}
+@media(max-width:700px){.reviewCard{grid-template-columns:1fr}.reviewCard img{width:100%;height:240px}}

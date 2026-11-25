@@ -86,3 +86,17 @@ Run `supabase/add-todo.sql` in Supabase → SQL Editor. This creates the shared 
    - Redirect URLs: `https://acai-carioca-studio-public.vercel.app/**`, `https://*-bianca-team1.vercel.app/**` (Vercel previews) and `http://localhost:3000/**`.
 4. The Google consent screen links to the public Privacy Policy at `/privacy` (`app/privacy/page.tsx`).
 5. A new Google user still needs a `workspace_members` row (see step 3) before they can see any content.
+
+## 9. Approval workflow
+Run `supabase/add-approvals.sql` once in Supabase → SQL Editor (already applied to the production project on Nov 25, 2026).
+
+- Statuses: Idea → In production → Ready → **Awaiting approval** → **Approved** / **Changes requested** → Scheduled → Published.
+- Only the **owner** and members with the **approver** role can approve or request changes (enforced in the database).
+- Approvers can see everything but cannot create, edit or delete posts or tasks.
+- The **Approvals** tab shows two weeks of content at a time, with "Approve all" for the period and per-post comments.
+
+To add an approver: ask them to sign in once (e.g. with Google), copy their user UUID from Authentication → Users, then run:
+```sql
+insert into public.workspace_members(workspace_id,user_id,role)
+values ('WORKSPACE_UUID','APPROVER_USER_UUID','approver');
+```
