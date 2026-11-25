@@ -20,3 +20,12 @@
 5. **Mudanças grandes:** antes, explicar o plano, listar os arquivos afetados e dizer se vai
    precisar de novo deploy no Vercel e/ou rodar SQL no Supabase.
 6. Preferir mudanças pequenas, uma de cada vez.
+
+## Fluxo de trabalho (automático)
+- Toda alteração pedida: fazer numa branch, enviar ao GitHub (push) e **criar ou atualizar o pull request
+  automaticamente**, sem perguntar.
+- Depois de abrir o PR, mandar o link e explicar em poucas palavras o que mudou e como testar
+  (o Vercel gera um link de prévia para cada PR).
+- **Não fazer merge sozinho**: a dona do projeto aprova clicando em "Merge" no GitHub (ou pedindo
+  explicitamente). O merge publica no site oficial.
+- Supabase: mesmo com acesso, qualquer mudança no banco continua exigindo explicação e autorização antes.
