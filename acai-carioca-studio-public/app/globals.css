@@ -38,3 +38,172 @@
 .roleGuide{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:28px}.roleGuide div{border-top:1px solid #d9c9bd;padding-top:8px;display:flex;flex-direction:column;gap:3px;font-size:12px}.roleGuide b{color:var(--wine);font:16px 'Playfair Display',serif}.roleGuide span{color:var(--muted)}
 .waitingActions{margin-top:26px}
 .notifyBar{background:#fffdfa}.notifyBar .secondary{padding:10px 14px}
+
+/* ============================================================
+   Design refresh — Apple-style surfaces & motion (Nov 2026)
+   Brand colors and Playfair headings stay; UI text uses the system font.
+   ============================================================ */
+:root{
+  --bg:#f5f1eb;--surface:#ffffff;--surface2:#faf7f2;
+  --hair:rgba(76,30,47,.09);--hair2:rgba(76,30,47,.14);
+  --tint:rgba(76,30,47,.07);--tint2:rgba(76,30,47,.12);
+  --glass:rgba(250,246,240,.72);
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","DM Sans","Helvetica Neue",Arial,sans-serif;
+  --spring:cubic-bezier(.32,.72,0,1);--ease:cubic-bezier(.25,.1,.25,1);
+  --r-sm:10px;--r-md:14px;--r-lg:20px;--r-xl:26px;
+  --shadow-1:0 1px 2px rgba(53,36,43,.05),0 2px 8px rgba(53,36,43,.04);
+  --shadow-2:0 2px 6px rgba(53,36,43,.06),0 12px 32px rgba(53,36,43,.08);
+  --shadow-3:0 8px 24px rgba(33,21,27,.12),0 32px 80px rgba(33,21,27,.18);
+}
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:-.01em}
+.brandMark,.brand small{font-family:var(--ui)}
+
+/* Small labels: quieter, less "stamped" */
+.eyebrow,.sideLabel{font-size:11px;letter-spacing:.02em;font-weight:500;color:#9a8a85}
+.brand small{letter-spacing:.04em;font-size:10px}
+.stats small{font-size:11px;letter-spacing:0;font-weight:500;text-transform:lowercase}
+.weekdays{font-size:11px;letter-spacing:0;font-weight:600}
+
+/* Sidebar: frosted glass */
+.sidebar{position:sticky;top:0;height:100vh;background:var(--glass);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border-right:1px solid var(--hair);padding:26px 14px}
+.sideLabel{margin:44px 0 10px 12px}
+.nav{position:relative;font-size:14px;font-weight:500;color:#6f5f62;padding:10px 12px;border-radius:var(--r-sm);transition:background-color .25s var(--ease),color .25s var(--ease),transform .35s var(--spring)}
+.nav:hover{background:var(--tint)}
+.nav.active{background:var(--surface);color:var(--wine);font-weight:600;box-shadow:var(--shadow-1)}
+.nav:active{transform:scale(.97)}
+.navBadge{font-variant-numeric:tabular-nums}
+.userLine{font-size:12px}
+
+/* Top bar: translucent, sticky */
+.topbar{position:sticky;top:0;z-index:5;height:72px;background:rgba(245,241,235,.72);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--hair)}
+.topTitle{font-size:18px}
+
+/* Headings */
+.welcome h1{letter-spacing:-.025em}
+.sectionHead h2{letter-spacing:-.015em}
+.stats div{border-top:0;background:var(--surface);border-radius:var(--r-md);padding:12px 16px;box-shadow:var(--shadow-1);min-width:88px}
+.stats b{font-variant-numeric:tabular-nums}
+
+/* Buttons: sentence case, rounded, springy press */
+.primary,.secondary,.iconButton,.textButton,.googleButton{font-family:var(--ui);text-transform:none;letter-spacing:-.005em;font-size:14px;font-weight:600;border-radius:var(--r-sm);transition:transform .45s var(--spring),background-color .2s var(--ease),box-shadow .2s var(--ease),opacity .2s}
+.primary,.secondary{padding:11px 18px;min-height:40px}
+.primary.compact{padding:9px 15px;min-height:36px;border-radius:999px}
+.primary{box-shadow:0 1px 2px rgba(76,30,47,.25),inset 0 1px 0 rgba(255,255,255,.12)}
+.secondary{background:var(--tint);color:var(--wine)}
+.secondary:hover{background:var(--tint2)}
+.iconButton{border:0;background:var(--tint);padding:8px 12px;font-size:13px;font-weight:500}
+.iconButton:hover{background:var(--tint2)}
+.textButton{background:transparent;font-weight:500;font-size:13px}
+.primary:active,.secondary:active,.iconButton:active,.googleButton:active,.filterChip:active,.taskCheck:active{transform:scale(.96);transition-duration:.12s}
+.primary:disabled,.secondary:disabled{transform:none}
+.googleButton{border-radius:var(--r-sm);border:1px solid var(--hair2);background:var(--surface);color:var(--ink);min-height:44px;font-size:14px}
+.googleButton:hover{background:var(--surface2)}
+
+/* Focus: visible, soft */
+:where(button,input,select,textarea,a):focus-visible{outline:none;box-shadow:0 0 0 3px rgba(110,52,72,.28)}
+
+/* Inputs */
+.monthInput,.search,.modal input:not([type=file]),.modal select,.modal textarea,.taskModal input,.taskModal textarea,.loginForm input,.libraryItem select,.teamRow select,.taskCard select,.changesForm textarea{border:1px solid var(--hair2);border-radius:var(--r-sm);background:var(--surface);font-size:14px;transition:border-color .2s,box-shadow .2s}
+.search{padding-left:12px;border-radius:999px}.search input{background:transparent;font-size:14px;padding:9px 12px 9px 4px}
+.modal input:not([type=file]):focus,.modal select:focus,.modal textarea:focus,.loginForm input:focus,.changesForm textarea:focus{border-color:rgba(110,52,72,.45)}
+.modal label:not(.uploadBox),.taskModal>label{font-size:12px;letter-spacing:0;text-transform:none;font-weight:600;color:#7a6669}
+.loginForm label{font-size:12px;font-weight:600}
+
+/* Content surfaces */
+.feedGrid{gap:4px;border-radius:var(--r-lg);overflow:hidden}
+.feedTile{transition:transform .5s var(--spring),filter .3s}
+.feedTile img{transition:transform .6s var(--spring)}
+.feedTile:hover img{transform:scale(1.035)}
+.feedTile:active{transform:scale(.97)}
+.tileOverlay{transition:opacity .3s var(--ease)}
+.calendar{border:0;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-2);background:var(--surface)}
+.weekdays{background:var(--surface2);border-bottom:1px solid var(--hair)}
+.day{border-color:var(--hair)}
+.dayPost{border-radius:8px;background:var(--surface2);padding:4px;transition:transform .4s var(--spring),background-color .2s}
+.dayPost:hover{background:var(--sand)}.dayPost:active{transform:scale(.96)}
+.dayPost img{border-radius:5px}
+.libraryItem,.teamRow,.reviewCard,.approveAllBar,.taskCard{border:0;border-radius:var(--r-md);box-shadow:var(--shadow-1);background:var(--surface)}
+.libraryItem img,.reviewCard img{border-radius:var(--r-sm)}
+.libraryItem{transition:transform .45s var(--spring),box-shadow .3s}
+.libraryItem:hover{box-shadow:var(--shadow-2)}
+.teamRow.pendingRow{background:#fbf4ea}
+.approveAllBar{background:var(--surface2)}
+.statusPill{border-radius:999px;border:0;background:var(--tint);text-transform:none;letter-spacing:0;font-size:12px;font-weight:500;padding:5px 11px}
+.statusPill.ok{background:#e9efdf;color:#4d6a2c}.statusPill.warn{background:#f6e6df;color:#8d4138}
+.empty{border:1.5px dashed var(--hair2);border-radius:var(--r-lg);background:rgba(255,255,255,.5)}
+.todoColumn{border:0;border-radius:var(--r-lg);background:rgba(255,255,255,.55)}
+.todoColumnHead{border-color:var(--hair)}
+.filterChip{font-size:13px;padding:7px 13px;border-color:var(--hair2);transition:background-color .2s,color .2s,transform .4s var(--spring)}
+.taskCheck{transition:background-color .25s var(--ease),transform .4s var(--spring)}
+.feedbackBox,.previousNote{border-radius:var(--r-sm)}
+.roleGuide div{border-top-color:var(--hair2)}
+.uploadBox{border-radius:var(--r-md);border:1.5px dashed var(--hair2);background:var(--surface2)}
+
+/* Login / waiting / legal cards */
+.loginShell,.setup,.legalShell{background:radial-gradient(120% 80% at 50% 0%,#fbf7f1 0%,var(--bg) 60%)}
+.loginCard,.setupCard,.legalCard{border:0;border-radius:var(--r-xl);box-shadow:var(--shadow-2);animation:rise .6s var(--spring) both}
+
+/* Modal: sheet that springs in */
+.modalBackdrop{background:rgba(33,21,27,.38);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:fadeIn .25s var(--ease) both}
+.modal{border-radius:var(--r-xl);box-shadow:var(--shadow-3);padding:26px 26px 22px;animation:sheetIn .5s var(--spring) both}
+.modalHead .iconButton{width:32px;height:32px;padding:0;border-radius:50%;display:grid;place-items:center}
+
+/* Toast (notices) */
+.noticeBar{position:fixed;left:50%;bottom:28px;z-index:30;max-width:min(560px,calc(100vw - 32px));transform:translateX(-50%);margin:0;padding:12px 16px 12px 18px;gap:14px;align-items:center;border-radius:999px;background:rgba(53,36,43,.88);color:#fffaf3;font-size:14px;font-weight:500;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:var(--shadow-3);animation:toastIn .55s var(--spring) both}
+
+/* View change: one gentle settle when you switch tabs */
+.viewFade{animation:viewIn .45s var(--spring) both}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes sheetIn{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,24px) scale(.95)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Phone: bottom tab bar + bottom sheets */
+@media(max-width:760px){
+  .appShell{display:block}
+  .sidebar{position:fixed;inset:auto 0 0 0;top:auto;height:auto;width:auto;z-index:20;flex-direction:row;align-items:stretch;justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--hair);background:rgba(250,246,240,.82)}
+  .sidebar .brand,.sidebar .sideLabel,.sidebarBottom .eyebrow,.sidebarBottom .userLine{display:none}
+  .sidebarBottom{margin:0;display:contents}
+  .sidebar .nav{flex:1;flex-direction:column;gap:3px;justify-content:center;padding:6px 2px;margin:0;font-size:10px;font-weight:500;border-radius:12px;min-width:0;white-space:nowrap;overflow:hidden}
+  .sidebar .nav.active{background:transparent;box-shadow:none;color:var(--wine);font-weight:600}
+  .sidebar .nav svg{width:22px;height:22px}
+  .navBadge{position:absolute;top:2px;left:calc(50% + 6px);margin:0;padding:0 5px;font-size:9px;line-height:15px}
+  .topbar{height:60px;padding:0 16px}
+  .content{padding:22px 16px calc(100px + env(safe-area-inset-bottom))}
+  .welcome h1{font-size:34px}
+  .stats div{padding:10px 12px;min-width:0}
+  .modalBackdrop{place-items:end center;padding:0}
+  .modal{width:100%;max-height:92vh;border-radius:var(--r-xl) var(--r-xl) 0 0;padding:14px 18px calc(18px + env(safe-area-inset-bottom));animation:sheetUp .5s var(--spring) both}
+  .modal::before{content:"";align-self:center;width:38px;height:5px;border-radius:3px;background:var(--hair2);margin-bottom:2px;flex-shrink:0}
+  .noticeBar{bottom:calc(84px + env(safe-area-inset-bottom));border-radius:18px}
+  .reviewNav{width:100%}.reviewNav .monthInput{flex:1}
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+
+/* Respect reduced motion */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* Refresh fixes */
+.navShort,.phoneOnly{display:none}
+.topActions{display:flex;align-items:center;gap:8px}
+.roundIcon{width:36px;height:36px;padding:0;border-radius:50%;display:grid;place-items:center}
+.formGrid>label{min-width:0}
+.modal input:not([type=file]),.modal select,.modal textarea{width:100%;min-width:0}
+.modalBackdrop{z-index:40}
+.noticeBar{z-index:50}
+.eyebrow{text-transform:none}
+@media(max-width:760px){
+  .navFull,.signOutNav{display:none!important}
+  .navShort{display:inline}
+  .phoneOnly{display:grid}
+  .topbarText .eyebrow{display:none}
+  .topTitle{font-size:17px}
+}
+.phoneOnly.roundIcon{display:none}
+.sideLabel{text-transform:none}
+@media(max-width:760px){.phoneOnly.roundIcon{display:grid}}
