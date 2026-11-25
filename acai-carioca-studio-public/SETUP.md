@@ -139,3 +139,13 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
 - **New client** (platform owner only) creates an empty client with you as owner.
 - Per-client settings live in `workspaces`: `logo_url`, `locations` (shown as the Location field on posts) and `voice_rules` (email brand-voice checks: `no_dashes`, `no_hyphen_bullets`, `no_emoji`, `cups_not_bowls`, `no_handcrafted_in_house`, `minimal_punctuation`).
 - People who sign in without access only appear to the platform owner (Team tab), who chooses which client to give them access to.
+
+## 15. New address, fonts, To-do drag and bulk status
+- **Address:** the app now lives at https://contentatelier.vercel.app (the old acai-carioca-studio-public.vercel.app still works).
+  Supabase (Site URL + redirect URLs) and the Google login screen (home page, privacy page, authorized domain) were updated to match.
+  Optional: set `APP_URL=https://contentatelier.vercel.app` in Vercel so approval emails link to the new address (this is already the default).
+- **Fonts:** Newsreader (titles) and Hanken Grotesk (text), loaded from Google Fonts in `app/globals.css`.
+- **To-do:** drag tasks between To do / In progress / Completed and up or down inside a column. The order is saved in
+  `tasks.sort_order` (`supabase/add-task-order.sql`, already applied).
+- **Creative library:** tick several posts (or "Select all"), pick a status and click "Apply". Approvers don't see this;
+  "Approved" and "Changes requested" stay reserved for reviewers.

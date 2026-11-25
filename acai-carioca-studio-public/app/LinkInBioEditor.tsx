@@ -8,7 +8,7 @@ import { Plus, Trash2, ChevronUp, ChevronDown, Copy, ExternalLink, Check } from 
 type Page = { workspace_id: string; slug: string; title: string; subtitle: string | null; avatar_url: string | null; published: boolean; instagram_handle: string | null; website: string | null; highlights: string[] };
 type Link = { id: string; label: string; url: string; sort_order: number };
 
-const OFFICIAL = "https://acai-carioca-studio-public.vercel.app";
+const OFFICIAL = "https://contentatelier.vercel.app";
 
 export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfileChange, clientName, clientLogo }: {
   clientName: string; clientLogo: string | null; workspaceId: string; userId: string; onNotice: (m: string) => void; onProfileChange: () => void;
