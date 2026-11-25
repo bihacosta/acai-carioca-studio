@@ -1,6 +1,6 @@
  "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import FeedGrid, { type FeedPost } from "./FeedGrid";
 import PostEditor, { type Snippet } from "./PostEditor";
@@ -61,6 +61,8 @@ export default function Home() {
   const [emails,setEmails] = useState<EmailCampaign[]>([]);
   const [clients,setClients] = useState<Client[]>([]);
   const [clientMenu,setClientMenu] = useState(false);
+  const [picking,setPicking] = useState(false);
+  const openClientRef = useRef<string|null>(null);
   const [selected,setSelected] = useState<string[]>([]);
   const [bulkStatus,setBulkStatus] = useState("Published");
   const [feedMode,setFeedMode] = useState<"grid"|"phone"|"stories">("grid");
@@ -112,6 +114,8 @@ export default function Home() {
         setWorkspaceId(null);
         setRole("");
         setNoAccess(false);
+        setPicking(false);
+        openClientRef.current=null;
         setTeam([]);
         setLoading(false);
       }
@@ -144,8 +148,13 @@ export default function Home() {
 
     const list:Client[]=(memberships||[]).map((m:any)=>({id:m.workspace_id,role:m.role,name:m.workspaces?.name||"Client",logo_url:m.workspaces?.logo_url||null,voice_rules:m.workspaces?.voice_rules||[],locations:m.workspaces?.locations||[]})).sort((a,b)=>a.name.localeCompare(b.name));
     setClients(list);
-    let saved:string|null=null;try{saved=localStorage.getItem(CLIENT_KEY);}catch{}
-    const chosen=list.find(c=>c.id===(preferredClient||saved))||list[0];
+    // With several clients, start on the "choose a client" page (unless one is already open, e.g. after a session refresh).
+    const wanted=preferredClient||openClientRef.current;
+    if(!wanted&&list.length>1){
+      setPicking(true);setWorkspaceId(null);setLoading(false);
+      return;
+    }
+    const chosen=list.find(c=>c.id===wanted)||list[0];
     const membership=chosen?{workspace_id:chosen.id,role:chosen.role}:null;
 
     if(!membership){
@@ -158,6 +167,8 @@ export default function Home() {
       return;
     }
     try{localStorage.setItem(CLIENT_KEY,membership.workspace_id);}catch{}
+    openClientRef.current=membership.workspace_id;
+    setPicking(false);
 
     setNoAccess(false);
     setWorkspaceId(membership.workspace_id);
@@ -208,8 +219,14 @@ export default function Home() {
     if(error){setNotice(error.message);setBusy(false);}
   }
 
+  function showClientPicker(){
+    setClientMenu(false);setMoreOpen(false);
+    openClientRef.current=null;
+    setPosts([]);setTasks([]);setEmails([]);setTeam([]);setSnippets([]);setSelected([]);
+    setWorkspaceId(null);setPicking(true);
+  }
   async function switchClient(id:string){
-    if(!session||id===workspaceId){setClientMenu(false);return;}
+    if(!session||(id===workspaceId&&!picking)){setClientMenu(false);return;}
     setClientMenu(false);setMoreOpen(false);
     setPosts([]);setTasks([]);setEmails([]);setTeam([]);setSnippets([]);setSelected([]);
     setView("feed");setFeedMode("grid");
@@ -493,12 +510,35 @@ export default function Home() {
 
   if(noAccess)return <main className="loginShell"><div className="loginCard"><p className="eyebrow">Content Atelier</p><h1>Almost<br/><i>there.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Your access request was sent to the workspace owner. Once it's approved, refresh this page to open the studio.</p><div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="primary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
 
+  if(picking){
+    let last:string|null=null;try{last=localStorage.getItem(CLIENT_KEY);}catch{}
+    const hour=new Date().getHours();
+    const greeting=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
+    return <main className="pickerShell">
+      <header className="pickerTop"><div className="brand"><span className="brandMark"><img src="/brand/atelier.png" alt=""/></span><div><b>content atelier.</b><small>CONTENT PLANNING</small></div></div><button className="textButton" onClick={()=>supabase?.auth.signOut()}><LogOut size={15}/> Sign out</button></header>
+      <section className="pickerBody">
+        <p className="muted pickerHello">{greeting}{session.user.email?`, ${session.user.email.split("@")[0]}`:""}</p>
+        <h1>Who are we working on today?</h1>
+        <div className="pickerGrid">
+          {clients.map(c=><button key={c.id} className="pickerCard" onClick={()=>switchClient(c.id)} disabled={loading}>
+            <span className="pickerLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span>
+            <span className="pickerName">{c.name}</span>
+            <small>{c.role==="owner"?"Owner":c.role==="approver"?"Approver":c.role==="admin"?"Admin":c.role==="viewer"?"Viewer":"Editor"}{c.id===last?" · last opened":""}</small>
+          </button>)}
+          {isPlatformOwner&&<button className="pickerCard newPicker" onClick={createClient} disabled={busy}><span className="pickerLogo"><Plus size={22}/></span><span className="pickerName">New client</span><small>Start a new workspace</small></button>}
+        </div>
+      </section>
+      {notice&&<div className="noticeBar" role="status" onClick={()=>setNotice("")}>{notice}<X size={14}/></div>}
+    </main>;
+  }
+
   return <main className="appShell">
     <aside className="sidebar"><div className="brand"><span className="brandMark"><img src="/brand/atelier.png" alt=""/></span><div><b>content atelier.</b><small>CONTENT PLANNING</small></div></div>
       <div className="clientSwitch">
         <button className="clientButton" onClick={()=>setClientMenu(v=>!v)} aria-expanded={clientMenu} aria-label="Switch client"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="clientName"><small>Client</small>{currentClient?.name||"Choose a client"}</span><ChevronDown size={15}/></button>
         {clientMenu&&<div className="clientMenu" role="menu">
           {clients.map(c=><button key={c.id} role="menuitem" className={"clientItem"+(c.id===workspaceId?" on":"")} onClick={()=>switchClient(c.id)}><span className="clientLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span><span>{c.name}<small>{c.role}</small></span>{c.id===workspaceId&&<Check size={14}/>}</button>)}
+          {clients.length>1&&<button className="clientItem newClient" onClick={showClientPicker}><span className="clientLogo"><LayoutGrid size={15}/></span><span>All clients</span></button>}
           {isPlatformOwner&&<button className="clientItem newClient" onClick={()=>{setClientMenu(false);createClient();}}><span className="clientLogo"><Plus size={15}/></span><span>New client</span></button>}
         </div>}
       </div>
@@ -598,6 +638,7 @@ export default function Home() {
     {moreOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setMoreOpen(false)}}><div className="modal moreSheet">
       <div className="moreUser"><span className="avatar">{session.user.email?.[0]?.toUpperCase()}</span><span>{session.user.email}</span></div>
       {(clients.length>1||isPlatformOwner)&&<div className="moreClients"><small>Clients</small>{clients.map(c=><button key={c.id} className={"moreItem"+(c.id===workspaceId?" on":"")} onClick={()=>switchClient(c.id)}><span className="clientLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span> {c.name}{c.id===workspaceId&&<Check size={15} className="moreCheck"/>}</button>)}
+        {clients.length>1&&<button className="moreItem" onClick={showClientPicker}><LayoutGrid size={18}/> All clients</button>}
         {isPlatformOwner&&<button className="moreItem" onClick={()=>{setMoreOpen(false);createClient();}}><Plus size={18}/> New client</button>}</div>}
       <button className="moreItem" onClick={()=>{setView("email");setMoreOpen(false);}}><Mail size={18}/> Email</button>
       <button className="moreItem" onClick={()=>{setView("library");setMoreOpen(false);}}><Images size={18}/> Creative library</button>

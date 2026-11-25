@@ -149,3 +149,8 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
   `tasks.sort_order` (`supabase/add-task-order.sql`, already applied).
 - **Creative library:** tick several posts (or "Select all"), pick a status and click "Apply". Approvers don't see this;
   "Approved" and "Changes requested" stay reserved for reviewers.
+
+## 16. Choose a client after login
+- People with access to more than one client now land on "Who are we working on today?" and pick a client there.
+- People with only one client (like an approver) go straight into it.
+- "All clients" in the client menu (sidebar, or More on the phone) brings the list back.
