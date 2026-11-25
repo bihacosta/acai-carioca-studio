@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import FeedGrid, { type FeedPost } from "./FeedGrid";
 import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail } from "lucide-react";
 
 type Task = {
@@ -60,7 +61,6 @@ export default function Home() {
   const [month,setMonth] = useState(new Date().toISOString().slice(0,7));
   const [modal,setModal] = useState(false);
   const [editing,setEditing] = useState<Post|null>(null);
-  const [dragged,setDragged] = useState<string|null>(null);
   const [form,setForm] = useState({title:"",date:new Date().toISOString().slice(0,10),format:"Post",location:"Both",pillar:"Product",status:"Idea",caption:""});
   const [selectedFile,setSelectedFile] = useState<File|null>(null);
 
@@ -301,14 +301,18 @@ export default function Home() {
     const {error}=await supabase.from("posts").delete().eq("id",post.id).eq("workspace_id",workspaceId);
     if(error)setNotice(error.message);else setPosts(p=>p.filter(x=>x.id!==post.id));
   }
-  async function reorder(targetId:string){
-    if(!supabase||!dragged||dragged===targetId)return;
-    const client = supabase;
-    const copy=[...posts];const from=copy.findIndex(p=>p.id===dragged),to=copy.findIndex(p=>p.id===targetId);
-    if(from<0||to<0)return;
-    const [item]=copy.splice(from,1);copy.splice(to,0,item);
-    setPosts(copy);setDragged(null);
-    await Promise.all(copy.map((p,i)=>client.from("posts").update({sort_order:i}).eq("id",p.id)));
+  async function saveOrder(ordered:FeedPost[]){
+    if(!supabase)return;
+    const client=supabase;
+    const byId=new Map(posts.map(p=>[p.id,p]));
+    const next=ordered.map((p,i)=>({...(byId.get(p.id) as Post),sort_order:i}));
+    const previous=posts;
+    setPosts(next);
+    const changed=next.filter(p=>byId.get(p.id)?.sort_order!==p.sort_order);
+    const results=await Promise.all(changed.map(p=>client.from("posts").update({sort_order:p.sort_order}).eq("id",p.id).eq("workspace_id",workspaceId)));
+    const failed=results.find(r=>r.error);
+    if(failed){setPosts(previous);setNotice("Could not save the new order: "+failed.error!.message);}
+    else setNotice("Feed order saved.");
   }
   function openNew(){setEditing(null);setSelectedFile(null);setForm({title:"",date:new Date().toISOString().slice(0,10),format:"Post",location:"Both",pillar:"Product",status:"Idea",caption:""});setModal(true);}
   function openEdit(p:Post){setEditing(p);setSelectedFile(null);setForm({title:p.title,date:p.publish_date||"",format:p.format,location:p.location,pillar:p.pillar,status:p.status,caption:p.caption||""});setModal(true);}
@@ -355,7 +359,7 @@ export default function Home() {
       <div className="content viewFade" key={view}>
         <div className="welcome"><div><p className="eyebrow">Your brand, visually curated</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Review two weeks of content at a time.":view==="team"?"Decide who can see and work on your calendar.":"Small steps, beautifully organized."}</p></div>{view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length}</b><small>AWAITING</small></div><div><b>{inWindow.filter(p=>p.status==="Approved").length}</b><small>APPROVED</small></div><div><b>{inWindow.filter(p=>p.status==="Changes requested").length}</b><small>CHANGES</small></div></div>:<div className="stats"><div><b>{view==="todo"?tasks.length:posts.length}</b><small>{view==="todo"?"TASKS":"CONTENT"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status!=="Done").length:count("In production")}</b><small>{view==="todo"?"OPEN":"IN PROGRESS"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status==="Done").length:count("Scheduled")}</b><small>{view==="todo"?"COMPLETED":"SCHEDULED"}</small></div></div>}</div>
         {loading?<p className="muted">Loading your workspace…</p>:<>
-          {view==="feed"&&<><div className="sectionHead"><div><p className="eyebrow">Instagram presence</p><h2>Feed preview</h2></div><span className="muted">{posts.length} pieces · drag to rearrange</span></div>{posts.length===0?<div className="empty"><Images size={28}/><h3>A blank canvas.</h3><p>Upload your first creative to begin building the grid.</p><button className="primary" onClick={openNew}><Plus size={16}/> Add your first post</button></div>:<div className="feedGrid">{posts.map(p=><article key={p.id} className="feedTile" draggable={!isApprover} onDragStart={()=>setDragged(p.id)} onDragOver={e=>e.preventDefault()} onDrop={()=>!isApprover&&reorder(p.id)} onClick={()=>openEdit(p)}><img src={p.image_url} alt={p.title}/><div className="tileOverlay"><b>{p.title}</b><span>{p.publish_date||"No date"} · {p.format}</span></div>{p.format==="Reel"&&<span className="formatIcon">▶</span>}{p.format==="Carousel"&&<span className="formatIcon">▤</span>}</article>)}</div>}</>}
+          {view==="feed"&&<><div className="sectionHead"><div><p className="eyebrow">Instagram presence</p><h2>Feed preview</h2></div><span className="muted">{posts.length} posts · {isApprover?"tap a post to preview":"drag to rearrange"}</span></div>{posts.length===0?<div className="empty"><Images size={28}/><h3>A blank canvas.</h3><p>Upload your first creative to begin building the grid.</p><button className="primary" onClick={openNew}><Plus size={16}/> Add your first post</button></div>:<FeedGrid posts={posts} disabled={isApprover} onOpen={p=>openEdit(p as Post)} onReorder={saveOrder}/>}</>}
           {view==="calendar"&&<><div className="sectionHead"><div><p className="eyebrow">Publishing rhythm</p><h2>Monthly overview</h2></div><input className="monthInput" type="month" value={month} onChange={e=>setMonth(e.target.value)}/></div><div className="calendar"><div className="weekdays">{["SUN","MON","TUE","WED","THU","FRI","SAT"].map((d,i)=><span key={i}>{d}</span>)}</div><div className="calendarGrid">{Array.from({length:offset},(_,i)=><div key={"e"+i}/>)}{Array.from({length:days},(_,i)=>{const date=`${month}-${String(i+1).padStart(2,"0")}`;const dayPosts=posts.filter(p=>p.publish_date===date);const dayTasks=tasks.filter(t=>t.due_date===date);return <div className="day" key={date}><b>{i+1}</b>{dayPosts.map(p=><button key={p.id} className={"dayPost"+(p.status==="Awaiting approval"?" awaitingPost":p.status==="Changes requested"?" changesPost":p.status==="Approved"?" approvedPost":"")} title={p.status} onClick={()=>openEdit(p)}><img src={p.image_url}/><span>{p.title}</span></button>)}{dayTasks.map(task=><button key={task.id} type="button" onClick={()=>!isApprover&&setView("todo")} title={`Task: ${task.title} · ${task.status}`} style={{display:"block",width:"100%",marginTop:5,padding:"5px 6px",border:0,borderLeft:`3px solid ${task.status==="Done"?"#62813B":"#4C1E2F"}`,borderRadius:3,background:task.status==="Done"?"#edf0e7":"#EFE4D2",color:"#4C1E2F",textAlign:"left",fontSize:11,lineHeight:1.3,cursor:"pointer",opacity:task.status==="Done"?0.75:1}}><span style={{display:"block",fontWeight:600,textDecoration:task.status==="Done"?"line-through":"none",overflowWrap:"anywhere"}}>{task.title}</span><span style={{display:"block",fontSize:9,marginTop:2,color:"#75665f"}}>TASK · {task.status.toUpperCase()}</span></button>)}</div>})}</div></div></>}
           {view==="todo"&&<>
             <div className="sectionHead"><div><p className="eyebrow">Team organization</p><h2>Things to get done</h2></div><button className="primary" onClick={openTask}><Plus size={16}/> Add task</button></div>
