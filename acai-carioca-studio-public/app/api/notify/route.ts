@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
 
-  let body: { kind?: string; postIds?: string[]; emailIds?: string[]; periodStart?: string; periodEnd?: string };
+  let body: { kind?: string; postIds?: string[]; emailIds?: string[]; workspaceId?: string; periodStart?: string; periodEnd?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }
   const kind = body.kind;
   const ids = Array.isArray(body.postIds) ? body.postIds.filter(i => typeof i === "string").slice(0, 100) : [];
@@ -40,7 +40,13 @@ export async function POST(req: Request) {
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData.user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
 
-  const { data: recipients, error: recError } = await supabase.rpc("notification_recipients", { kind });
+  const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId : null;
+  const { data: recipients, error: recError } = await supabase.rpc("notification_recipients", { kind, target_workspace: workspaceId });
+  let clientName = "";
+  if (workspaceId) {
+    const { data: ws } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
+    clientName = (ws as { name?: string } | null)?.name || "";
+  }
   if (recError) return NextResponse.json({ error: recError.message }, { status: 403 });
   const to = ((recipients || []) as { email: string }[]).map(r => r.email).filter(Boolean);
   if (to.length === 0)
@@ -66,7 +72,7 @@ export async function POST(req: Request) {
 
   // Always link to the official site (preview links are protected by Vercel login).
   const appUrl = process.env.APP_URL || "https://acai-carioca-studio-public.vercel.app";
-  const sender = userData.user.email || "Açaí Carioca Studio";
+  const sender = userData.user.email || "Content Atelier";
   const rows = posts.map(p => {
     const note = p.approval_note ? `<div style="color:#8d5148;font-size:13px;margin-top:4px">“${esc(p.approval_note)}”</div>` : "";
     const status = kind === "reviewed"
@@ -77,21 +83,21 @@ export async function POST(req: Request) {
   let subject: string, intro: string, button: string;
   if (kind === "submitted") {
     const period = body.periodStart && body.periodEnd ? `${day(body.periodStart)} – ${day(body.periodEnd)}` : "the next two weeks";
-    subject = `${posts.length} item${posts.length === 1 ? "" : "s"} ready for your approval (${period})`;
+    subject = `${clientName ? clientName + ": " : ""}${posts.length} item${posts.length === 1 ? "" : "s"} ready for your approval (${period})`;
     intro = `${esc(sender)} sent <b>${posts.length} item${posts.length === 1 ? "" : "s"}</b> for ${esc(period)} for your approval.`;
     button = "Review in the studio";
   } else {
     const approved = posts.filter(p => p.status === "Approved").length;
     const changes = posts.filter(p => p.status === "Changes requested").length;
     const parts = [approved ? `${approved} approved` : "", changes ? `${changes} with changes requested` : ""].filter(Boolean).join(", ");
-    subject = `Content review: ${parts || "update"}`;
+    subject = `${clientName ? clientName + ": " : ""}content review, ${parts || "update"}`;
     intro = `${esc(sender)} reviewed your content: <b>${esc(parts || "update")}</b>.`;
     button = "Open the studio";
   }
 
   const html = `<div style="background:#f7f1e6;padding:30px 12px;font-family:Helvetica,Arial,sans-serif">
 <div style="max-width:560px;margin:auto;background:#fcfaf6;border:1px solid #e6dbd1;padding:30px">
-<div style="font-size:10px;letter-spacing:2px;color:#967d79">AÇAÍ CARIOCA · CONTENT ATELIER</div>
+<div style="font-size:10px;letter-spacing:2px;color:#967d79">${esc((clientName ? clientName + " · " : "").toUpperCase())}CONTENT ATELIER</div>
 <h1 style="font-family:Georgia,serif;font-weight:400;color:#4c1e2f;font-size:26px;margin:12px 0">${esc(subject)}</h1>
 <p style="font-size:14px;color:#35242b;line-height:1.5">${intro}</p>
 <table style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
@@ -101,7 +107,7 @@ export async function POST(req: Request) {
 
   try {
     const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: gmailUser, pass: gmailPass } });
-    await transporter.sendMail({ from: `"Açaí Carioca Studio" <${gmailUser}>`, to, replyTo: userData.user.email || undefined, subject, text, html });
+    await transporter.sendMail({ from: `"Content Atelier" <${gmailUser}>`, to, replyTo: userData.user.email || undefined, subject, text, html });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "unknown error";
     return NextResponse.json({ error: "Could not send the email: " + message }, { status: 502 });

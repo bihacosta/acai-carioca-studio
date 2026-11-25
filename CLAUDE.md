@@ -1,6 +1,7 @@
-# Açaí Carioca Studio — instruções para o Claude
+# Content Atelier (antigo Açaí Carioca Studio) — instruções para o Claude
 
 ## Sobre o projeto
+- Content Atelier é a plataforma de planejamento de conteúdo da Bianca; cada cliente (ex.: Açaí Carioca) é um workspace separado.
 - O app fica na pasta `acai-carioca-studio-public/` (Next.js + TypeScript + Supabase, hospedado no Vercel).
 - É um projeto existente: não recriar nada do zero.
 - A tela principal está em `acai-carioca-studio-public/app/page.tsx`; o estilo em `app/globals.css`;

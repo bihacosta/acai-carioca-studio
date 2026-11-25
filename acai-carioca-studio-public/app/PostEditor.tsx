@@ -16,7 +16,6 @@ type Comment = { id: string; author_id: string; author_email: string | null; bod
 
 const CAPTION_LIMIT = 2200, HASHTAG_LIMIT = 30;
 const formats = ["Post", "Reel", "Carousel", "Story", "Flyer"];
-const locations = ["Both", "Pacific Beach", "Point Loma"];
 const pillars = ["Product", "Lifestyle", "Promotion", "Brand Awareness", "Community"];
 
 /* ---------- Framing: drag the photo inside the 3:4 grid frame ---------- */
@@ -93,14 +92,14 @@ function Comments({ postId, workspaceId, userId }: { postId: string; workspaceId
 }
 
 /* ---------- Editor ---------- */
-export default function PostEditor({ post, preset, isApprover, workspaceId, userId, snippets, statusOptions, onClose, onSaved, onSnippetsChanged, onOpenApprovals }: {
-  post: EditorPost | null; preset?: { format?: string; date?: string }; isApprover: boolean; workspaceId: string; userId: string; snippets: Snippet[];
+export default function PostEditor({ post, preset, locations = [], isApprover, workspaceId, userId, snippets, statusOptions, onClose, onSaved, onSnippetsChanged, onOpenApprovals }: {
+  post: EditorPost | null; locations?: string[]; preset?: { format?: string; date?: string }; isApprover: boolean; workspaceId: string; userId: string; snippets: Snippet[];
   statusOptions: (current: string) => string[]; onClose: () => void; onSaved: (message: string) => void;
   onSnippetsChanged: () => void; onOpenApprovals: () => void;
 }) {
   const [form, setForm] = useState({
     title: post?.title || "", date: post ? (post.publish_date || "") : (preset?.date || new Date().toISOString().slice(0, 10)),
-    format: post?.format || preset?.format || "Post", location: post?.location || "Both", pillar: post?.pillar || "Product",
+    format: post?.format || preset?.format || "Post", location: post?.location || locations[0] || "Both", pillar: post?.pillar || "Product",
     status: post?.status || "Idea", caption: post?.caption || ""
   });
   const [onGrid, setOnGrid] = useState(post ? post.on_grid !== false : true);
@@ -236,7 +235,7 @@ export default function PostEditor({ post, preset, isApprover, workspaceId, user
             <label>Content title<input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Summer in a cup" /></label>
             <label>Publication date<input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></label>
             <label>Format<select value={form.format} onChange={e => setForm({ ...form, format: e.target.value })}>{formats.map(x => <option key={x}>{x}</option>)}</select></label>
-            <label>Location<select value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}>{locations.map(x => <option key={x}>{x}</option>)}</select></label>
+            {locations.length > 0 && <label>Location<select value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}>{(locations.includes(form.location) ? locations : [form.location, ...locations]).map(x => <option key={x}>{x}</option>)}</select></label>}
             <label>Content pillar<select value={form.pillar} onChange={e => setForm({ ...form, pillar: e.target.value })}>{pillars.map(x => <option key={x}>{x}</option>)}</select></label>
             <label>Status<select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{statusOptions(post?.status || "").map(x => <option key={x}>{x}</option>)}</select></label>
           </div>

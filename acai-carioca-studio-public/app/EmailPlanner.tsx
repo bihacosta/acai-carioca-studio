@@ -15,8 +15,7 @@ export type EmailCampaign = {
 
 export const EMAIL_STATUSES = ["Idea", "Drafting", "Ready", "Awaiting approval", "Changes requested", "Approved", "Scheduled", "Sent"];
 const REVIEW_ONLY = ["Approved", "Changes requested"];
-const AUDIENCES = ["All customers", "Loyalty members", "Pacific Beach", "Point Loma", "Catering clients"];
-const SENDER = "Açaí Carioca";
+const AUDIENCES = ["All customers", "Loyalty members", "New customers", "VIP customers"];
 
 const day = (iso: string | null) => iso ? new Date(iso + "T12:00:00") : null;
 const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => iso ? day(iso)!.toLocaleDateString("en-US", o) : "";
@@ -24,19 +23,28 @@ const pct = (a: number | null, b: number | null) => a != null && b ? `${Math.rou
 export const seriesLabel = (e: Pick<EmailCampaign, "series" | "series_number">) =>
   e.series ? `${e.series}${e.series_number ? ` No. ${String(e.series_number).padStart(2, "0")}` : ""}` : null;
 
-/* ---------- Brand voice check (Açaí Carioca email rules) ---------- */
+/* ---------- Brand voice check (rules are set per client) ---------- */
 type Flag = { level: "warn" | "tip"; text: string };
 const EMOJI = /\p{Extended_Pictographic}/u;
-export function voiceCheck(e: { subject?: string | null; preview_text?: string | null; body?: string | null; cta_label?: string | null }): Flag[] {
+export const VOICE_RULES: Record<string, string> = {
+  no_dashes: "No dashes (— or –)",
+  no_hyphen_bullets: "No hyphen bullets",
+  no_emoji: "No emojis",
+  cups_not_bowls: "Açaí is served in cups, not bowls",
+  no_handcrafted_in_house: "Never say “handcrafted in-house”",
+  minimal_punctuation: "Minimal punctuation (no exclamation marks)"
+};
+export function voiceCheck(e: { subject?: string | null; preview_text?: string | null; body?: string | null; cta_label?: string | null }, rules: string[] = []): Flag[] {
   const flags: Flag[] = [];
+  const has = (r: string) => rules.includes(r);
   const all = [e.subject, e.preview_text, e.body, e.cta_label].filter(Boolean).join("\n");
   const subject = e.subject || "", preview = e.preview_text || "";
-  if (/[—–]/.test(all)) flags.push({ level: "warn", text: "Dashes (— or –) found. The email voice uses no dashes; use a period or a line break." });
-  if (/(^|\n)\s*[-•*]\s/.test(all) || /\s-\s/.test(all)) flags.push({ level: "warn", text: "Hyphen bullets or “ - ” found. Write it as plain prose or separate lines." });
-  if (EMOJI.test(all)) flags.push({ level: "warn", text: "Emoji found. Emails stay emoji free." });
-  if (/\bbowls?\b/i.test(all)) flags.push({ level: "warn", text: "“Bowl” found. Açaí is always served in cups." });
-  if (/hand-?crafted\s+in-?house/i.test(all)) flags.push({ level: "warn", text: "“Handcrafted in-house” can’t be used. The granola comes from a supplier." });
-  if ((all.match(/!/g) || []).length > 0) flags.push({ level: "tip", text: "Exclamation marks found. The voice keeps punctuation minimal." });
+  if (has("no_dashes") && /[—–]/.test(all)) flags.push({ level: "warn", text: "Dashes (— or –) found. This brand’s email voice uses no dashes; use a period or a line break." });
+  if (has("no_hyphen_bullets") && (/(^|\n)\s*[-•*]\s/.test(all) || /\s-\s/.test(all))) flags.push({ level: "warn", text: "Hyphen bullets or “ - ” found. Write it as plain prose or separate lines." });
+  if (has("no_emoji") && EMOJI.test(all)) flags.push({ level: "warn", text: "Emoji found. This brand’s emails stay emoji free." });
+  if (has("cups_not_bowls") && /\bbowls?\b/i.test(all)) flags.push({ level: "warn", text: "“Bowl” found. Açaí is always served in cups." });
+  if (has("no_handcrafted_in_house") && /hand-?crafted\s+in-?house/i.test(all)) flags.push({ level: "warn", text: "“Handcrafted in-house” can’t be used for this brand." });
+  if (has("minimal_punctuation") && /!/.test(all)) flags.push({ level: "tip", text: "Exclamation marks found. The voice keeps punctuation minimal." });
   if (subject.length > 60) flags.push({ level: "tip", text: `Subject is ${subject.length} characters. Under 60 keeps it from being cut off on phones.` });
   if (preview && (preview.length < 35 || preview.length > 130)) flags.push({ level: "tip", text: `Preview text is ${preview.length} characters. Aim for 35 to 130.` });
   if (!subject) flags.push({ level: "tip", text: "Add a subject line." });
@@ -45,8 +53,8 @@ export function voiceCheck(e: { subject?: string | null; preview_text?: string |
 }
 
 /* ---------- Editor ---------- */
-function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceId, userId, onClose, onSaved, onOpenApprovals }: {
-  email: EmailCampaign | null; preset?: Partial<EmailCampaign>; allEmails: EmailCampaign[]; readOnly: boolean; canDelete: boolean;
+function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceId, userId, onClose, onSaved, onOpenApprovals, clientName, clientLogo, voiceRules }: {
+  clientName: string; clientLogo: string | null; voiceRules: string[]; email: EmailCampaign | null; preset?: Partial<EmailCampaign>; allEmails: EmailCampaign[]; readOnly: boolean; canDelete: boolean;
   workspaceId: string; userId: string; onClose: () => void; onSaved: (msg: string) => void; onOpenApprovals: () => void;
 }) {
   const base: Partial<EmailCampaign> = email || preset || {};
@@ -63,7 +71,7 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
   const [error, setError] = useState("");
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF(prev => ({ ...prev, [k]: v }));
   const seriesNames = Array.from(new Set(allEmails.map(e => e.series).filter(Boolean))) as string[];
-  const flags = voiceCheck(f);
+  const flags = voiceCheck(f, voiceRules);
   const statusOptions = readOnly ? EMAIL_STATUSES : EMAIL_STATUSES.filter(s => !REVIEW_ONLY.includes(s) || s === email?.status);
   const num = (v: string) => v === "" ? null : Number(v);
   const showResults = f.status === "Sent" || f.recipients != null;
@@ -123,9 +131,9 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
         {/* Inbox preview */}
         <div className="inboxPreview" aria-label="How it looks in the inbox">
           <div className="inboxRow">
-            <span className="inboxAvatar"><img src="/brand/logo.png" alt="" /></span>
+            <span className="inboxAvatar">{clientLogo ? <img src={clientLogo} alt="" /> : <span className="monoLogo">{clientName[0]}</span>}</span>
             <div className="inboxText">
-              <div className="inboxTop"><b>{SENDER}</b><span>{f.send_date ? fmt(f.send_date, { month: "short", day: "numeric" }) : "Today"}</span></div>
+              <div className="inboxTop"><b>{clientName}</b><span>{f.send_date ? fmt(f.send_date, { month: "short", day: "numeric" }) : "Today"}</span></div>
               <div className="inboxSubject">{f.subject || <i>Your subject line</i>}</div>
               <div className="inboxPre">{f.preview_text || f.body.split("\n").find(Boolean) || <i>Preview text</i>}</div>
             </div>
@@ -134,15 +142,15 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
 
         <fieldset className="plainFieldset" disabled={readOnly}>
           <div className="formGrid">
-            <label>Internal name<input required value={f.title} onChange={e => set("title", e.target.value)} placeholder="Pistachio Butter feature" /></label>
+            <label>Internal name<input required value={f.title} onChange={e => set("title", e.target.value)} placeholder="e.g. December newsletter" /></label>
             <label>Send date<input type="date" value={f.send_date} onChange={e => set("send_date", e.target.value)} /></label>
-            <label>Series<input list="emailSeries" value={f.series} onChange={e => pickSeries(e.target.value)} placeholder="None, or e.g. Topping Series" /><datalist id="emailSeries">{seriesNames.map(s => <option key={s} value={s} />)}</datalist></label>
+            <label>Series<input list="emailSeries" value={f.series} onChange={e => pickSeries(e.target.value)} placeholder="None, or a series name" /><datalist id="emailSeries">{seriesNames.map(s => <option key={s} value={s} />)}</datalist></label>
             <label>Number in series<input type="number" min={1} value={f.series_number ?? ""} disabled={!f.series} onChange={e => set("series_number", num(e.target.value))} /></label>
             <label>Audience<input list="emailAudiences" value={f.audience} onChange={e => set("audience", e.target.value)} /><datalist id="emailAudiences">{AUDIENCES.map(a => <option key={a} value={a} />)}</datalist></label>
             <label>Status<select value={f.status} onChange={e => set("status", e.target.value)}>{statusOptions.map(s => <option key={s}>{s}</option>)}</select></label>
           </div>
 
-          <label>Subject line<input value={f.subject} onChange={e => set("subject", e.target.value)} placeholder="The topping that changes everything. [Topping Series No. 03]" /></label>
+          <label>Subject line<input value={f.subject} onChange={e => set("subject", e.target.value)} placeholder="A subject people want to open" /></label>
           <div className="captionBar"><span className={f.subject.length > 60 ? "over" : ""}>{f.subject.length} / 60</span></div>
           <label>Preview text<input value={f.preview_text} onChange={e => set("preview_text", e.target.value)} placeholder="The line people read next to the subject" /></label>
           <div className="captionBar"><span className={f.preview_text && (f.preview_text.length < 35 || f.preview_text.length > 130) ? "over" : ""}>{f.preview_text.length} / 130</span></div>
@@ -158,11 +166,11 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
           <label>Email copy<textarea rows={9} value={f.body} onChange={e => set("body", e.target.value)} placeholder={"No. 03 · …\n\nWrite the email here."} /></label>
           <div className="formGrid">
             <label>Button text<input value={f.cta_label} onChange={e => set("cta_label", e.target.value)} placeholder="Find your cup" /></label>
-            <label>Button link<input value={f.cta_url} onChange={e => set("cta_url", e.target.value)} placeholder="https://www.acaicarioca.com" /></label>
+            <label>Button link<input value={f.cta_url} onChange={e => set("cta_url", e.target.value)} placeholder="https://" /></label>
           </div>
 
           <div className={"voiceCheck" + (flags.some(x => x.level === "warn") ? " hasWarn" : "")}>
-            <div className="blockHead">{flags.some(x => x.level === "warn") ? <AlertTriangle size={15} /> : <Check size={15} />}<b>Brand voice check</b></div>
+            <div className="blockHead">{flags.some(x => x.level === "warn") ? <AlertTriangle size={15} /> : <Check size={15} />}<b>{voiceRules.length ? "Brand voice check" : "Email check"}</b></div>
             {flags.length === 0 ? <p className="muted">Clean, elegant and on brand.</p> :
               <ul>{flags.map(x => <li key={x.text} className={x.level}>{x.text}</li>)}</ul>}
           </div>
@@ -208,8 +216,8 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
 }
 
 /* ---------- Planner ---------- */
-export default function EmailPlanner({ emails, workspaceId, userId, canEdit, canDelete, onChanged, onOpenApprovals }: {
-  emails: EmailCampaign[]; workspaceId: string; userId: string; canEdit: boolean; canDelete: boolean;
+export default function EmailPlanner({ emails, workspaceId, userId, canEdit, canDelete, onChanged, onOpenApprovals, clientName, clientLogo, voiceRules }: {
+  clientName: string; clientLogo: string | null; voiceRules: string[]; emails: EmailCampaign[]; workspaceId: string; userId: string; canEdit: boolean; canDelete: boolean;
   onChanged: (msg: string) => void; onOpenApprovals: () => void;
 }) {
   const [filter, setFilter] = useState("All");
@@ -231,7 +239,7 @@ export default function EmailPlanner({ emails, workspaceId, userId, canEdit, can
   }
 
   const Card = ({ e }: { e: EmailCampaign }) => {
-    const warn = voiceCheck(e).some(x => x.level === "warn");
+    const warn = voiceCheck(e, voiceRules).some(x => x.level === "warn");
     return (
       <article className={"emailCard" + (e.status === "Sent" ? " sent" : "")} onClick={() => setOpen({ email: e })} role="button" tabIndex={0}
         onKeyDown={k => { if (k.key === "Enter") setOpen({ email: e }); }}>
@@ -260,14 +268,14 @@ export default function EmailPlanner({ emails, workspaceId, userId, canEdit, can
           <button key={s} className={filter === s ? "filterChip selected" : "filterChip"} onClick={() => setFilter(s)}>{s}</button>)}</div>
       )}
       {emails.length === 0 ? (
-        <div className="empty"><Mail size={28} /><h3>No emails planned yet.</h3><p>Plan your next send, like the next Topping Series email, and keep the copy on brand.</p>
-          {canEdit && <button className="primary" onClick={() => setOpen({ email: null, preset: { series: "Topping Series" } })}><Plus size={16} /> Plan an email</button>}</div>
+        <div className="empty"><Mail size={28} /><h3>No emails planned yet.</h3><p>Plan your next send and keep the copy on brand.</p>
+          {canEdit && <button className="primary" onClick={() => setOpen({ email: null })}><Plus size={16} /> Plan an email</button>}</div>
       ) : <div className="emailGroups">
         {overdue.length > 0 && <section><h4 className="groupTitle late">Date passed, not marked as sent</h4>{overdue.map(e => <Card key={e.id} e={e} />)}</section>}
         {upcoming.length > 0 && <section><h4 className="groupTitle">Coming up</h4>{upcoming.map(e => <Card key={e.id} e={e} />)}</section>}
         {sent.length > 0 && <section><h4 className="groupTitle">Sent</h4>{sent.map(e => <Card key={e.id} e={e} />)}</section>}
       </div>}
-      {open && <EmailEditor key={open.email?.id || "new"} email={open.email} preset={open.preset} allEmails={emails} readOnly={!canEdit}
+      {open && <EmailEditor clientName={clientName} clientLogo={clientLogo} voiceRules={voiceRules} key={open.email?.id || "new"} email={open.email} preset={open.preset} allEmails={emails} readOnly={!canEdit}
         canDelete={canDelete} workspaceId={workspaceId} userId={userId} onClose={() => setOpen(null)}
         onSaved={msg => { setOpen(null); onChanged(msg); }} onOpenApprovals={() => { setOpen(null); onOpenApprovals(); }} />}
     </>
