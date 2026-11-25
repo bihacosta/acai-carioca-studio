@@ -75,3 +75,14 @@ This ZIP is source code, not a deployed website. No hosting, Supabase project, d
 \n## Fix for publication dates (if you previously added a `date` column)\nRun `supabase/fix-publication-date.sql` once in Supabase → SQL Editor. It copies any dates from the temporary `date` column into `publish_date`, which is the column used by the calendar and feed.\n
 ## 7. Enable the To-do tab
 Run `supabase/add-todo.sql` in Supabase → SQL Editor. This creates the shared `tasks` table and its workspace-member access policies. Then replace the app files with this release and restart the development server or redeploy. Existing posts and publication dates remain in Supabase.
+
+## 8. "Continue with Google" and the Privacy Policy
+1. Google Cloud Console → Google Auth Platform → Clients → Web application client.
+   - Authorized redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`
+2. Supabase → Authentication → Sign In / Providers → Google: enable it and paste the Client ID and Client Secret.
+   The Client Secret stays only in Supabase — never in the code, GitHub or Vercel.
+3. Supabase → Authentication → URL Configuration:
+   - Site URL: `https://acai-carioca-studio-public.vercel.app`
+   - Redirect URLs: `https://acai-carioca-studio-public.vercel.app/**`, `https://*-bianca-team1.vercel.app/**` (Vercel previews) and `http://localhost:3000/**`.
+4. The Google consent screen links to the public Privacy Policy at `/privacy` (`app/privacy/page.tsx`).
+5. A new Google user still needs a `workspace_members` row (see step 3) before they can see any content.
