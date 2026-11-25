@@ -462,3 +462,7 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .linkBio{white-space:pre-line}
 .phoneBio p{white-space:pre-line}
 @media(max-width:760px){.bioTwo{grid-template-columns:1fr}}
+/* Real logo */
+.brandMark{background:#fff;overflow:hidden;box-shadow:0 0 0 1px var(--hair)}
+.brandMark img{width:100%;height:100%;object-fit:cover}
+.phoneAvatar,.phoneHighlights span,.bioAvatar,.bioPreviewAvatar,.linkAvatar,.bioCard .bioAvatar{background:#fff}

@@ -32,7 +32,7 @@ export default function LinkPage() {
       {state === "missing" && <div className="linkCard"><h1>Page not found</h1><p className="muted">This link page doesn’t exist or isn’t published yet.</p></div>}
       {state === "ready" && page && (
         <div className="linkCard">
-          <div className="linkAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : "AC"}</div>
+          <div className="linkAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}</div>
           <h1>{page.title}</h1>
           {page.instagram_handle && <a className="linkHandle" href={`https://www.instagram.com/${page.instagram_handle}/`} target="_blank" rel="noopener noreferrer">@{page.instagram_handle}</a>}
           {page.subtitle && <p className="linkBio">{page.subtitle}</p>}

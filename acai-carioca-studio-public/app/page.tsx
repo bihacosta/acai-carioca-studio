@@ -391,7 +391,7 @@ export default function Home() {
   if(noAccess)return <main className="loginShell"><div className="loginCard"><p className="eyebrow">AÇAÍ CARIOCA · CONTENT ATELIER</p><h1>Almost<br/><i>there.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Your access request was sent to the workspace owner. Once it's approved, refresh this page to open the studio.</p><div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="primary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
 
   return <main className="appShell">
-    <aside className="sidebar"><div className="brand"><span className="brandMark">AC</span><div><b>açaí carioca.</b><small>CONTENT ATELIER</small></div></div>
+    <aside className="sidebar"><div className="brand"><span className="brandMark"><img src={profile.avatar_url||"/brand/logo.png"} alt="Açaí Carioca"/></span><div><b>açaí carioca.</b><small>CONTENT ATELIER</small></div></div>
       <p className="sideLabel">Workspace</p>
       <button className={view==="feed"?"nav active":"nav"} onClick={()=>setView("feed")}><LayoutGrid size={17}/> <span className="navFull">Feed planner</span><span className="navShort">Feed</span></button>
       <button className={view==="calendar"?"nav active":"nav"} onClick={()=>setView("calendar")}><CalendarDays size={17}/> Calendar</button>

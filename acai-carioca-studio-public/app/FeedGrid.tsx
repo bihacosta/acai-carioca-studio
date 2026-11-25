@@ -154,12 +154,12 @@ export default function FeedGrid({ posts, drafts, disabled, mode, profile, showC
               <div className="phoneScreen">
                 <div className="phoneTopBar"><b>{profile.instagram_handle || "acaicarioca"}</b></div>
                 <div className="phoneProfile">
-                  <div className="phoneAvatar">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : "AC"}</div>
+                  <div className="phoneAvatar">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}</div>
                   <div className="phoneStats"><div><b>{posts.length}</b><span>planned</span></div><div><b>—</b><span>followers</span></div><div><b>—</b><span>following</span></div></div>
                 </div>
                 <div className="phoneBio"><b>{profile.title}</b>{profile.subtitle && <p>{profile.subtitle}</p>}{profile.website && <span className="phoneLink">{profile.website}</span>}</div>
                 <div className="phoneButtons"><span>Following</span><span>Message</span></div>
-                {(profile.highlights?.length ?? 0) > 0 && <div className="phoneHighlights">{profile.highlights!.map(h => <div key={h}><span>{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : "AC"}</span><small>{h}</small></div>)}</div>}
+                {(profile.highlights?.length ?? 0) > 0 && <div className="phoneHighlights">{profile.highlights!.map(h => <div key={h}><span>{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}</span><small>{h}</small></div>)}</div>}
                 {palette}
                 {grid}
               </div>

@@ -93,7 +93,7 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
       <div className="bioEditor">
         <section className="bioCard">
           <div className="bioAvatarRow">
-            <label className="bioAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : "AC"}<input type="file" accept="image/*" onChange={e => uploadAvatar(e.target.files?.[0])} /></label>
+            <label className="bioAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}<input type="file" accept="image/*" onChange={e => uploadAvatar(e.target.files?.[0])} /></label>
             <div className="bioFields">
               <label>Name<input value={page.title} maxLength={60} onChange={e => setPage({ ...page, title: e.target.value })} onBlur={() => savePage(page)} /></label>
               <label>Bio<textarea rows={5} value={page.subtitle || ""} maxLength={300} onChange={e => setPage({ ...page, subtitle: e.target.value })} onBlur={() => savePage(page)} /></label>
@@ -156,7 +156,7 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
         <div className="phoneFrame small">
           <div className="phoneNotch" />
           <div className="phoneScreen bioPreview">
-            <div className="bioPreviewAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : "AC"}</div>
+            <div className="bioPreviewAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}</div>
             <h3>{page.title}</h3>
             {page.instagram_handle && <span className="bioHandle">@{page.instagram_handle}</span>}
             {page.subtitle && <p>{page.subtitle}</p>}
