@@ -122,3 +122,11 @@ Run `supabase/add-planner-features.sql` once (already applied to the production 
 - **Post editor:** up to 10 images per post (carousel), Reel cover, **grid framing** (drag the photo inside the 3:4 frame), caption counter (2,200) and hashtag counter (30), saved **caption templates** and **hashtag groups**, "Save as draft", and **comments** (everyone on the team, including approvers).
 - **Calendar:** drag a post to another day to change its date.
 - **Link in bio:** editor under "Link in bio"; the public page lives at `/l/<address>` and is only visible after "Publish page". The public sees the name, photo and links — never posts or comments.
+
+## 13. Email marketing planner
+Run `supabase/add-email-planner.sql` once (already applied to the production project on Nov 25, 2026).
+
+- **Email** tab: plan each send (subject, preview text, date, audience, series and number, copy, main image, button, Square Marketing link) and log results (sent, opens, clicks, sales) after sending.
+- **Series** such as the Topping Series: filter by series and use "Next in series" to start the next number one week later.
+- **Brand voice check** flags dashes, hyphen bullets, emojis, "bowl" (açaí is served in cups), "handcrafted in-house", exclamation marks, and subject/preview lengths.
+- Emails awaiting approval show up in **Approvals** next to posts, are included in "Approve all" and in the "Notify approver" email, and appear on the **Calendar**.

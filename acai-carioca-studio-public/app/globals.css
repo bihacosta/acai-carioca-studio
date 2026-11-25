@@ -466,3 +466,66 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .brandMark{background:#fff;overflow:hidden;box-shadow:0 0 0 1px var(--hair)}
 .brandMark img{width:100%;height:100%;object-fit:cover}
 .phoneAvatar,.phoneHighlights span,.bioAvatar,.bioPreviewAvatar,.linkAvatar,.bioCard .bioAvatar{background:#fff}
+
+/* ===================== Email planner ===================== */
+.emailFilters{margin:-4px 0 18px}
+.emailGroups{display:flex;flex-direction:column;gap:22px}
+.emailGroups section{display:flex;flex-direction:column;gap:10px}
+.groupTitle{font:600 13px var(--ui);color:var(--muted);margin:0 0 2px}
+.groupTitle.late{color:#a0342a}
+.emailCard{display:grid;grid-template-columns:64px 1fr auto;gap:16px;align-items:center;background:var(--surface);border-radius:var(--r-md);box-shadow:var(--shadow-1);padding:14px 16px;cursor:pointer;transition:transform .45s var(--spring),box-shadow .3s}
+.emailCard:hover{box-shadow:var(--shadow-2)}.emailCard:active{transform:scale(.99)}
+.emailCard.sent{background:rgba(255,255,255,.65)}
+.emailDate{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;background:var(--surface2);padding:8px 0;color:var(--wine);text-align:center}
+.emailDate b{font:400 26px/1 'Playfair Display',serif}.emailDate small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.emailInfo{min-width:0}
+.emailInfo h3{font:400 19px/1.25 'Playfair Display',serif;color:var(--wine);margin:4px 0 3px;overflow-wrap:anywhere}
+.emailInfo p{margin:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emailMeta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.emailMeta span{font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:3px 7px;display:inline-flex;align-items:center;gap:3px}
+.emailMeta .warnTag{background:#f6e6df;color:#8d4138}
+.seriesBadge{display:inline-block;font-size:11px;font-weight:600;color:var(--green);background:#eef2e7;border-radius:999px;padding:2px 9px}
+.emailSide{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.emailSide .textButton{margin:0;padding:0;font-size:12px;display:inline-flex;align-items:center;gap:3px}
+.miniRates{display:flex;gap:8px;font-size:11px;color:var(--muted)}
+.emailEditor{width:min(680px,100%)}
+.inboxPreview{background:#f2f2f4;border-radius:var(--r-md);padding:10px}
+.inboxRow{display:flex;gap:10px;background:#fff;border-radius:12px;padding:11px 12px;box-shadow:var(--shadow-1)}
+.inboxAvatar{width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;box-shadow:0 0 0 1px var(--hair)}
+.inboxAvatar img{width:100%;height:100%;object-fit:cover}
+.inboxText{min-width:0;flex:1;font-family:var(--ui)}
+.inboxTop{display:flex;justify-content:space-between;font-size:14px;color:#111}.inboxTop span{font-size:12px;color:#8a8a8e}
+.inboxSubject{font-size:14px;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.inboxPre{font-size:13px;color:#8a8a8e;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:1px}
+.inboxText i{color:#b5b5b9}
+.heroRow{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;background:var(--surface2);border-radius:var(--r-md);padding:12px}
+.heroPreview{aspect-ratio:3/2;border-radius:8px;overflow:hidden;background:var(--sand);display:grid;place-items:center;color:var(--muted)}
+.heroPreview img{width:100%;height:100%;object-fit:cover}
+.heroRow b{color:var(--wine);font-size:14px}.heroRow p{margin:3px 0 8px}
+.voiceCheck{border-radius:var(--r-md);padding:12px 14px;background:#eef2e7;color:#3f5a22}
+.voiceCheck.hasWarn{background:#fbf1ea;color:#7b3a2c}
+.voiceCheck .blockHead{color:inherit}
+.voiceCheck ul{margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.45}
+.voiceCheck li.tip{color:#7a6669}
+.voiceCheck p{margin:6px 0 0}
+.squareBlock{display:flex;flex-direction:column;gap:10px;background:var(--surface2);border-radius:var(--r-md);padding:12px}
+.squareBlock a{text-decoration:none}
+.resultsBlock{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--hair);padding-top:14px}
+.resultsGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.rates{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}.rates b{color:var(--wine)}
+.dangerText{color:#a0342a!important;display:inline-flex;align-items:center;gap:4px;margin:0}
+.dayEmail{display:block;width:100%;margin-top:5px;padding:5px 6px;border:0;border-left:3px solid var(--green);border-radius:6px;background:#eef2e7;color:#3f5a22;text-align:left;font-size:11px;line-height:1.3}
+.dayEmail span{display:flex;gap:4px;align-items:center;font-weight:600;overflow-wrap:anywhere}.dayEmail small{display:block;font-size:9px;margin-top:2px;opacity:.8}
+.dayEmail.done{opacity:.7}
+.reviewEmailsTitle{margin:24px 0 10px}
+.emailReviewArt{width:170px;height:120px;border-radius:var(--r-sm);background:#eef2e7;display:grid;place-items:center;color:var(--green);overflow:hidden}
+.emailReviewArt img{width:100%;height:100%;object-fit:cover;cursor:pointer}
+.emailReview{align-items:start}
+.emailBodyPreview{max-height:180px;overflow:auto;background:var(--surface2);border-radius:10px;padding:10px 12px}
+@media(max-width:760px){
+  .emailCard{grid-template-columns:52px 1fr;}
+  .emailSide{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center}
+  .resultsGrid{grid-template-columns:1fr 1fr}
+  .heroRow{grid-template-columns:90px 1fr}
+  .emailReviewArt{width:100%;height:140px}
+}
