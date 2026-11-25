@@ -231,3 +231,6 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 @keyframes lift{from{transform:scale(1) rotate(0);border-radius:0;box-shadow:0 0 0 rgba(33,21,27,0)}to{transform:scale(1.05) rotate(-.6deg);border-radius:12px;box-shadow:0 18px 40px rgba(33,21,27,.28),0 4px 12px rgba(33,21,27,.16)}}
 .liftedTile{transform-origin:center;animation:lift .28s var(--spring) forwards}
 .feedTile.liftedTile .tileOverlay{opacity:0!important}
+.taskBody[role=button]{cursor:pointer;border-radius:8px;margin:-4px;padding:4px;transition:background-color .2s var(--ease)}
+.taskBody[role=button]:hover{background:var(--tint)}
+.taskBody[role=button]:active{background:var(--tint2)}
