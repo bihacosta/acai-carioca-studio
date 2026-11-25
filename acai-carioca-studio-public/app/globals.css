@@ -614,3 +614,13 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .newPicker{background:transparent;box-shadow:inset 0 0 0 1.5px var(--hair2)}
 .newPicker:hover{background:var(--surface)}
 @media (prefers-reduced-motion:reduce){.pickerBody{animation:none}.pickerCard,.pickerCard:hover{transition:none;transform:none}}
+
+/* Client logo upload */
+.pickerItem{position:relative;display:flex}
+.pickerItem .pickerCard{flex:1}
+.logoEdit{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 1px var(--hair2);font-size:12px;font-weight:500;color:var(--wine);cursor:pointer;opacity:.85;transition:opacity .2s,background-color .2s}
+.logoEdit:hover,.logoEdit:focus-within{opacity:1;background:#f8eff2}
+.logoEdit:focus-within{outline:2px solid var(--wine2);outline-offset:2px}
+.logoEdit input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.logoEdit.busy{cursor:progress;opacity:1}
+label.clientItem{cursor:pointer}

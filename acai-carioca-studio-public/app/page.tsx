@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { uploadImage } from "@/lib/media";
 import FeedGrid, { type FeedPost } from "./FeedGrid";
 import PostEditor, { type Snippet } from "./PostEditor";
 import CalendarBoard from "./CalendarBoard";
@@ -231,6 +232,21 @@ export default function Home() {
     setPosts([]);setTasks([]);setEmails([]);setTeam([]);setSnippets([]);setSelected([]);
     setView("feed");setFeedMode("grid");
     await loadPosts(session.user.id,id);
+  }
+  const [logoBusy,setLogoBusy] = useState<string|null>(null);
+  async function changeClientLogo(client:Client,file:File|undefined){
+    if(!supabase||!session||!file)return;
+    if(!file.type.startsWith("image/")){setNotice("Choose an image file (PNG or JPG).");return;}
+    setLogoBusy(client.id);setNotice("");
+    try{
+      const url=await uploadImage(file,session.user.id);
+      const {error}=await supabase.from("workspaces").update({logo_url:url}).eq("id",client.id);
+      if(error)throw error;
+      setClients(cur=>cur.map(c=>c.id===client.id?{...c,logo_url:url}:c));
+      if(client.id===workspaceId)setProfile(p=>({...p,avatar_url:p.avatar_url===client.logo_url?url:p.avatar_url}));
+      setNotice(`Logo updated for ${client.name}.`);
+    }catch(e:any){setNotice("Could not update the logo: "+(e?.message||e));}
+    setLogoBusy(null);
   }
   async function createClient(){
     if(!supabase)return;
@@ -520,11 +536,17 @@ export default function Home() {
         <p className="muted pickerHello">{greeting}{session.user.email?`, ${session.user.email.split("@")[0]}`:""}</p>
         <h1>Who are we working on today?</h1>
         <div className="pickerGrid">
-          {clients.map(c=><button key={c.id} className="pickerCard" onClick={()=>switchClient(c.id)} disabled={loading}>
-            <span className="pickerLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span>
-            <span className="pickerName">{c.name}</span>
-            <small>{c.role==="owner"?"Owner":c.role==="approver"?"Approver":c.role==="admin"?"Admin":c.role==="viewer"?"Viewer":"Editor"}{c.id===last?" · last opened":""}</small>
-          </button>)}
+          {clients.map(c=><div key={c.id} className="pickerItem">
+            <button className="pickerCard" onClick={()=>switchClient(c.id)} disabled={loading}>
+              <span className="pickerLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span>
+              <span className="pickerName">{c.name}</span>
+              <small>{c.role==="owner"?"Owner":c.role==="approver"?"Approver":c.role==="admin"?"Admin":c.role==="viewer"?"Viewer":"Editor"}{c.id===last?" · last opened":""}</small>
+            </button>
+            {(c.role==="owner"||c.role==="admin")&&<label className={"logoEdit"+(logoBusy===c.id?" busy":"")} title={c.logo_url?"Change logo":"Add logo"}>
+              <input type="file" accept="image/*" disabled={!!logoBusy} onChange={e=>{changeClientLogo(c,e.target.files?.[0]);e.target.value="";}}/>
+              <Upload size={14}/> {logoBusy===c.id?"Uploading…":c.logo_url?"Change logo":"Add logo"}
+            </label>}
+          </div>)}
           {isPlatformOwner&&<button className="pickerCard newPicker" onClick={createClient} disabled={busy}><span className="pickerLogo"><Plus size={22}/></span><span className="pickerName">New client</span><small>Start a new workspace</small></button>}
         </div>
       </section>
@@ -538,6 +560,7 @@ export default function Home() {
         <button className="clientButton" onClick={()=>setClientMenu(v=>!v)} aria-expanded={clientMenu} aria-label="Switch client"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="clientName"><small>Client</small>{currentClient?.name||"Choose a client"}</span><ChevronDown size={15}/></button>
         {clientMenu&&<div className="clientMenu" role="menu">
           {clients.map(c=><button key={c.id} role="menuitem" className={"clientItem"+(c.id===workspaceId?" on":"")} onClick={()=>switchClient(c.id)}><span className="clientLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span><span>{c.name}<small>{c.role}</small></span>{c.id===workspaceId&&<Check size={14}/>}</button>)}
+          {currentClient&&(currentClient.role==="owner"||currentClient.role==="admin")&&<label className="clientItem newClient"><span className="clientLogo"><Upload size={15}/></span><span>{logoBusy?"Uploading…":currentClient.logo_url?"Change client logo":"Add client logo"}</span><input type="file" accept="image/*" hidden disabled={!!logoBusy} onChange={e=>{changeClientLogo(currentClient,e.target.files?.[0]);e.target.value="";setClientMenu(false);}}/></label>}
           {clients.length>1&&<button className="clientItem newClient" onClick={showClientPicker}><span className="clientLogo"><LayoutGrid size={15}/></span><span>All clients</span></button>}
           {isPlatformOwner&&<button className="clientItem newClient" onClick={()=>{setClientMenu(false);createClient();}}><span className="clientLogo"><Plus size={15}/></span><span>New client</span></button>}
         </div>}

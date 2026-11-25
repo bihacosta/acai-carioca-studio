@@ -154,3 +154,9 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
 - People with access to more than one client now land on "Who are we working on today?" and pick a client there.
 - People with only one client (like an approver) go straight into it.
 - "All clients" in the client menu (sidebar, or More on the phone) brings the list back.
+
+## 17. Client logos
+- Owners and admins can add or change a client's logo: on the "Who are we working on today?" page ("Add logo" / "Change logo"
+  on each card) or in the client menu ("Change client logo").
+- Database: `supabase/add-client-logo.sql` lets signed-in users update only `workspaces.logo_url`; the existing policy limits it
+  to that client's owners/admins (already applied). Images go to the same storage folder as other uploads.
