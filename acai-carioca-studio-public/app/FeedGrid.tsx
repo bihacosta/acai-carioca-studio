@@ -75,8 +75,8 @@ const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.35" } } })
 };
 
-export default function FeedGrid({ posts, drafts, disabled, mode, profile, showColors, onOpen, onReorder, onPlaceDraft, onMoveToDrafts }: {
-  posts: FeedPost[]; drafts: FeedPost[]; disabled: boolean; mode: "grid" | "phone"; profile: Profile; showColors: boolean;
+export default function FeedGrid({ posts, drafts, disabled, mode, profile, showColors, onOpen, onReorder, onPlaceDraft, onMoveToDrafts, fallbackLogo = null }: {
+  fallbackLogo?: string | null; posts: FeedPost[]; drafts: FeedPost[]; disabled: boolean; mode: "grid" | "phone"; profile: Profile; showColors: boolean;
   onOpen: (p: FeedPost) => void; onReorder: (ordered: FeedPost[]) => void;
   onPlaceDraft: (draftId: string, index: number) => void; onMoveToDrafts: (postId: string) => void;
 }) {
@@ -152,14 +152,14 @@ export default function FeedGrid({ posts, drafts, disabled, mode, profile, showC
             <div className="phoneFrame">
               <div className="phoneNotch" />
               <div className="phoneScreen">
-                <div className="phoneTopBar"><b>{profile.instagram_handle || "acaicarioca"}</b></div>
+                <div className="phoneTopBar"><b>{profile.instagram_handle || profile.title.toLowerCase().replace(/[^a-z0-9._]/g, "") || "yourbrand"}</b></div>
                 <div className="phoneProfile">
-                  <div className="phoneAvatar">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}</div>
+                  <div className="phoneAvatar">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : (fallbackLogo ? <img src={fallbackLogo} alt="" /> : <span className="monoLogo">{(profile.title || "?")[0]}</span>)}</div>
                   <div className="phoneStats"><div><b>{posts.length}</b><span>planned</span></div><div><b>—</b><span>followers</span></div><div><b>—</b><span>following</span></div></div>
                 </div>
                 <div className="phoneBio"><b>{profile.title}</b>{profile.subtitle && <p>{profile.subtitle}</p>}{profile.website && <span className="phoneLink">{profile.website}</span>}</div>
                 <div className="phoneButtons"><span>Following</span><span>Message</span></div>
-                {(profile.highlights?.length ?? 0) > 0 && <div className="phoneHighlights">{profile.highlights!.map(h => <div key={h}><span>{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}</span><small>{h}</small></div>)}</div>}
+                {(profile.highlights?.length ?? 0) > 0 && <div className="phoneHighlights">{profile.highlights!.map(h => <div key={h}><span>{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : (fallbackLogo ? <img src={fallbackLogo} alt="" /> : <span className="monoLogo">{(profile.title || "?")[0]}</span>)}</span><small>{h}</small></div>)}</div>}
                 {palette}
                 {grid}
               </div>

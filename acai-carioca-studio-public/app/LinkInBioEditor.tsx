@@ -10,8 +10,8 @@ type Link = { id: string; label: string; url: string; sort_order: number };
 
 const OFFICIAL = "https://acai-carioca-studio-public.vercel.app";
 
-export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfileChange }: {
-  workspaceId: string; userId: string; onNotice: (m: string) => void; onProfileChange: () => void;
+export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfileChange, clientName, clientLogo }: {
+  clientName: string; clientLogo: string | null; workspaceId: string; userId: string; onNotice: (m: string) => void; onProfileChange: () => void;
 }) {
   const [page, setPage] = useState<Page | null>(null);
   const [links, setLinks] = useState<Link[]>([]);
@@ -26,7 +26,7 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
       supabase.from("bio_pages").select("*").eq("workspace_id", workspaceId).maybeSingle(),
       supabase.from("bio_links").select("id,label,url,sort_order").eq("workspace_id", workspaceId).order("sort_order")
     ]);
-    setPage((p as Page) || { workspace_id: workspaceId, slug: "acaicarioca", title: "Açaí Carioca", subtitle: "Brazilian açaí · Pacific Beach & Point Loma", avatar_url: null, published: false, instagram_handle: null, website: null, highlights: [] });
+    setPage((p as Page) || { workspace_id: workspaceId, slug: (clientName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-brand").slice(0, 40).padEnd(3, "x"), title: clientName, subtitle: null, avatar_url: clientLogo, published: false, instagram_handle: null, website: null, highlights: [] });
     setLinks((l || []) as Link[]);
     setLoading(false);
   }
@@ -93,16 +93,16 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
       <div className="bioEditor">
         <section className="bioCard">
           <div className="bioAvatarRow">
-            <label className="bioAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}<input type="file" accept="image/*" onChange={e => uploadAvatar(e.target.files?.[0])} /></label>
+            <label className="bioAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : <span className="monoLogo">{(page.title || "?")[0]}</span>}<input type="file" accept="image/*" onChange={e => uploadAvatar(e.target.files?.[0])} /></label>
             <div className="bioFields">
               <label>Name<input value={page.title} maxLength={60} onChange={e => setPage({ ...page, title: e.target.value })} onBlur={() => savePage(page)} /></label>
               <label>Bio<textarea rows={5} value={page.subtitle || ""} maxLength={300} onChange={e => setPage({ ...page, subtitle: e.target.value })} onBlur={() => savePage(page)} /></label>
             </div>
           </div>
           <div className="bioTwo">
-            <label>Instagram username<div className="slugInput"><span>@</span><input value={page.instagram_handle || ""} maxLength={30} placeholder="acaicarioca.usa"
+            <label>Instagram username<div className="slugInput"><span>@</span><input value={page.instagram_handle || ""} maxLength={30} placeholder="yourbrand"
               onChange={e => setPage({ ...page, instagram_handle: e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, "") || null })} onBlur={() => savePage(page)} /></div></label>
-            <label>Website<input value={page.website || ""} maxLength={100} placeholder="www.acaicarioca.com" onChange={e => setPage({ ...page, website: e.target.value || null })} onBlur={() => savePage(page)} /></label>
+            <label>Website<input value={page.website || ""} maxLength={100} placeholder="www.yourbrand.com" onChange={e => setPage({ ...page, website: e.target.value || null })} onBlur={() => savePage(page)} /></label>
           </div>
           <label>Story highlights <small className="muted">(separate with commas, shown in the phone preview)</small>
             <input value={(page.highlights || []).join(", ")} onChange={e => setPage({ ...page, highlights: e.target.value.split(",").map(x => x.trim()).filter(Boolean).slice(0, 10) })} onBlur={() => savePage(page)} /></label>
@@ -130,7 +130,7 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
           </ul>
           <form className="bioAdd" onSubmit={addLink}>
             <input placeholder="Button text, e.g. Order online" value={draft.label} maxLength={80} onChange={e => setDraft({ ...draft, label: e.target.value })} />
-            <input placeholder="Link, e.g. acaicarioca.com/menu" value={draft.url} onChange={e => setDraft({ ...draft, url: e.target.value })} />
+            <input placeholder="Link, e.g. yourbrand.com/menu" value={draft.url} onChange={e => setDraft({ ...draft, url: e.target.value })} />
             <button className="primary" disabled={busy || !draft.label.trim() || !draft.url.trim()}><Plus size={15} /> Add link</button>
           </form>
         </section>
@@ -156,7 +156,7 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
         <div className="phoneFrame small">
           <div className="phoneNotch" />
           <div className="phoneScreen bioPreview">
-            <div className="bioPreviewAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : <img src="/brand/logo.png" alt="" />}</div>
+            <div className="bioPreviewAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : <span className="monoLogo">{(page.title || "?")[0]}</span>}</div>
             <h3>{page.title}</h3>
             {page.instagram_handle && <span className="bioHandle">@{page.instagram_handle}</span>}
             {page.subtitle && <p>{page.subtitle}</p>}

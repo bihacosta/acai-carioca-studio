@@ -130,3 +130,12 @@ Run `supabase/add-email-planner.sql` once (already applied to the production pro
 - **Series** such as the Topping Series: filter by series and use "Next in series" to start the next number one week later.
 - **Brand voice check** flags dashes, hyphen bullets, emojis, "bowl" (açaí is served in cups), "handcrafted in-house", exclamation marks, and subject/preview lengths.
 - Emails awaiting approval show up in **Approvals** next to posts, are included in "Approve all" and in the "Notify approver" email, and appear on the **Calendar**.
+
+## 14. Content Atelier: many clients
+Run `supabase/add-multi-client.sql` once (already applied to the production project on Nov 25, 2026).
+
+- The app is now **Content Atelier**, a content-planning platform. Each **client** (e.g. Açaí Carioca) is a workspace with its own posts, stories, emails, tasks, link-in-bio page, team and approvers.
+- Switch clients from the box under the logo (desktop) or **More** (phone). The last client you opened is remembered on that device.
+- **New client** (platform owner only) creates an empty client with you as owner.
+- Per-client settings live in `workspaces`: `logo_url`, `locations` (shown as the Location field on posts) and `voice_rules` (email brand-voice checks: `no_dashes`, `no_hyphen_bullets`, `no_emoji`, `cups_not_bowls`, `no_handcrafted_in_house`, `minimal_punctuation`).
+- People who sign in without access only appear to the platform owner (Team tab), who chooses which client to give them access to.

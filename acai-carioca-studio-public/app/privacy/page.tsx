@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · Açaí Carioca Studio",
-  description: "How Açaí Carioca Studio collects, uses and protects your information."
+  title: "Privacy Policy · Content Atelier",
+  description: "How Content Atelier collects, uses and protects your information."
 };
 
 const CONTACT_EMAIL = "bihacosta@gmail.com";
@@ -12,13 +12,14 @@ export default function PrivacyPage() {
   return (
     <main className="legalShell">
       <article className="legalCard">
-        <p className="eyebrow">AÇAÍ CARIOCA · CONTENT ATELIER</p>
+        <p className="eyebrow">Content Atelier</p>
         <h1>Privacy Policy</h1>
         <p className="muted">Last updated: {LAST_UPDATED}</p>
 
         <p>
-          Açaí Carioca Studio (&ldquo;the Studio&rdquo;) is an internal content-planning workspace
-          operated by Açaí Carioca, San Diego, California. This policy explains what information the
+          Content Atelier (&ldquo;the Studio&rdquo;) is a content-planning platform based in San Diego,
+          California, used by brands and their teams to plan and approve social media and email content.
+          This policy explains what information the
           Studio collects when you use it, how that information is used, and the choices you have.
         </p>
 
@@ -98,7 +99,7 @@ export default function PrivacyPage() {
         </p>
 
         <p className="legalBack">
-          <a href="/">← Back to Açaí Carioca Studio</a>
+          <a href="/">← Back to Content Atelier</a>
         </p>
       </article>
     </main>

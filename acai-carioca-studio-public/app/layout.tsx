@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Açaí Carioca Studio",
-  description: "A visual content studio for Açaí Carioca.",
-  appleWebApp: { capable: true, title: "Studio", statusBarStyle: "default" }
+  title: "Content Atelier",
+  description: "Content planning for brands: feed, stories, email and approvals in one place.",
+  appleWebApp: { capable: true, title: "Atelier", statusBarStyle: "default" }
 };
 export const viewport: Viewport = {
   themeColor: "#f5f1eb",
