@@ -7,13 +7,14 @@ import PostEditor, { type Snippet } from "./PostEditor";
 import CalendarBoard from "./CalendarBoard";
 import StoriesView from "./StoriesView";
 import LinkInBioEditor from "./LinkInBioEditor";
+import TaskBoard from "./TaskBoard";
 import EmailPlanner, { type EmailCampaign, seriesLabel } from "./EmailPlanner";
 import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail, Link2, MoreHorizontal, Palette, Smartphone, Film, ChevronDown } from "lucide-react";
 
 type Task = {
   id: string; title: string; details: string | null; list_name: string; due_date: string | null;
   priority: "Low" | "Normal" | "High"; status: "To do" | "In progress" | "Done"; assignee: string | null;
-  created_at: string;
+  created_at: string; sort_order?: number;
 };
 
 type Post = {
@@ -60,6 +61,8 @@ export default function Home() {
   const [emails,setEmails] = useState<EmailCampaign[]>([]);
   const [clients,setClients] = useState<Client[]>([]);
   const [clientMenu,setClientMenu] = useState(false);
+  const [selected,setSelected] = useState<string[]>([]);
+  const [bulkStatus,setBulkStatus] = useState("Published");
   const [feedMode,setFeedMode] = useState<"grid"|"phone"|"stories">("grid");
   const [showColors,setShowColors] = useState(false);
   const [snippets,setSnippets] = useState<Snippet[]>([]);
@@ -180,6 +183,7 @@ export default function Home() {
       .from("tasks")
       .select("*")
       .eq("workspace_id",membership.workspace_id)
+      .order("sort_order",{ascending:true})
       .order("created_at",{ascending:false});
     if(taskError) setNotice("Could not load To-do tasks: "+taskError.message+". Run supabase/add-todo.sql in the SQL Editor.");
     else setTasks((taskData||[]) as Task[]);
@@ -207,7 +211,7 @@ export default function Home() {
   async function switchClient(id:string){
     if(!session||id===workspaceId){setClientMenu(false);return;}
     setClientMenu(false);setMoreOpen(false);
-    setPosts([]);setTasks([]);setEmails([]);setTeam([]);setSnippets([]);
+    setPosts([]);setTasks([]);setEmails([]);setTeam([]);setSnippets([]);setSelected([]);
     setView("feed");setFeedMode("grid");
     await loadPosts(session.user.id,id);
   }
@@ -312,6 +316,15 @@ export default function Home() {
     const {error}=await supabase.from("tasks").update(changes).eq("id",task.id).eq("workspace_id",workspaceId);
     if(error)setNotice(error.message);
     else setTasks(current=>current.map(t=>t.id===task.id?{...t,...changes}:t));
+  }
+  async function moveTasks(updates:{id:string;status:Task["status"];sort_order:number}[]){
+    if(!supabase||!workspaceId)return;
+    const previous=tasks;
+    const map=new Map(updates.map(u=>[u.id,u]));
+    setTasks(cur=>cur.map(t=>map.has(t.id)?{...t,...map.get(t.id)!}:t));
+    const results=await Promise.all(updates.map(u=>supabase!.from("tasks").update({status:u.status,sort_order:u.sort_order}).eq("id",u.id).eq("workspace_id",workspaceId)));
+    const failed=results.find(r=>r.error);
+    if(failed?.error){setTasks(previous);setNotice("Could not move the task: "+failed.error.message);}
   }
   async function removeTask(task:Task){
     if(!supabase||!workspaceId||!confirm(`Delete task "${task.title}"?`))return;
@@ -419,6 +432,17 @@ export default function Home() {
     if(n){const r=await notify("reviewed",postsDone.map(p=>p.id),emailsDone.map(e=>e.id));if(r.ok)msg+=" The team was notified by email.";else if(isApprover)msg+=" (Email not sent: "+r.error+")";}
     setNotice(msg);setBusy(false);
   }
+  async function applyBulkStatus(){
+    if(!supabase||!workspaceId||selected.length===0)return;
+    const ids=[...selected];
+    const previous=posts;
+    setBusy(true);setNotice("");
+    setPosts(p=>p.map(x=>ids.includes(x.id)?{...x,status:bulkStatus}:x));
+    const {error}=await supabase.from("posts").update({status:bulkStatus}).in("id",ids).eq("workspace_id",workspaceId);
+    if(error){setPosts(previous);setNotice(error.message);}
+    else{setNotice(`${ids.length} post${ids.length===1?"":"s"} set to “${bulkStatus}”.`);setSelected([]);}
+    setBusy(false);
+  }
   async function removePost(post:Post){
     if(!supabase||!confirm("Delete this content item?"))return;
     const {error}=await supabase.from("posts").delete().eq("id",post.id).eq("workspace_id",workspaceId);
@@ -514,17 +538,7 @@ export default function Home() {
           {view==="todo"&&<>
             <div className="sectionHead"><div><p className="eyebrow">Team organization</p><h2>Things to get done</h2></div><button className="primary" onClick={openTask}><Plus size={16}/> Add task</button></div>
             <div className="todoToolbar"><div className="todoFilters">{taskLists.map(list=><button key={list} className={taskListFilter===list?"filterChip selected":"filterChip"} onClick={()=>setTaskListFilter(list)}>{list}</button>)}</div><span className="muted">Shared with your workspace team</span></div>
-            {visibleTasks.length===0?<div className="empty"><ClipboardList size={28}/><h3>{tasks.length===0?"A fresh start.":"Nothing on this list yet."}</h3><p>{tasks.length===0?"Create your first checklist item and keep the team moving.":"Add a task to this checklist when you're ready."}</p><button className="primary" onClick={openTask}><Plus size={16}/> Create a task</button></div>:<div className="todoBoard">
-              <section className="todoColumn"><div className="todoColumnHead"><h3>To do</h3><span>{openTasks.filter(t=>t.status==="To do").length}</span></div>
-                {openTasks.filter(t=>t.status==="To do").map(task=><article className="taskCard" key={task.id}><button className="taskCheck" aria-label="Mark complete" onClick={()=>updateTask(task,{status:"Done"})}><Check size={15}/></button><div className="taskBody" role="button" tabIndex={0} title="Edit task" onClick={()=>openEditTask(task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openEditTask(task);}}}><b>{task.title}</b>{task.details&&<p>{task.details}</p>}<div className="taskMeta"><span>{task.list_name}</span>{task.due_date&&<span>Due {new Date(task.due_date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>}{task.assignee&&<span>{task.assignee}</span>}<span className={"priority "+task.priority.toLowerCase()}>{task.priority}</span></div></div><select aria-label="Task status" value={task.status} onChange={e=>updateTask(task,{status:e.target.value as Task["status"]})}><option>To do</option><option>In progress</option><option>Done</option></select><button className="taskDelete" aria-label="Delete task" onClick={()=>removeTask(task)}><Trash2 size={15}/></button></article>)}
-              </section>
-              <section className="todoColumn"><div className="todoColumnHead"><h3>In progress</h3><span>{openTasks.filter(t=>t.status==="In progress").length}</span></div>
-                {openTasks.filter(t=>t.status==="In progress").map(task=><article className="taskCard" key={task.id}><button className="taskCheck" aria-label="Mark complete" onClick={()=>updateTask(task,{status:"Done"})}><Check size={15}/></button><div className="taskBody" role="button" tabIndex={0} title="Edit task" onClick={()=>openEditTask(task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openEditTask(task);}}}><b>{task.title}</b>{task.details&&<p>{task.details}</p>}<div className="taskMeta"><span>{task.list_name}</span>{task.due_date&&<span>Due {new Date(task.due_date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>}{task.assignee&&<span>{task.assignee}</span>}<span className={"priority "+task.priority.toLowerCase()}>{task.priority}</span></div></div><select aria-label="Task status" value={task.status} onChange={e=>updateTask(task,{status:e.target.value as Task["status"]})}><option>To do</option><option>In progress</option><option>Done</option></select><button className="taskDelete" aria-label="Delete task" onClick={()=>removeTask(task)}><Trash2 size={15}/></button></article>)}
-              </section>
-              <section className="todoColumn completedColumn"><div className="todoColumnHead"><h3>Completed</h3><span>{doneTasks.length}</span></div>
-                {doneTasks.map(task=><article className="taskCard completedTask" key={task.id}><button className="taskCheck checked" aria-label="Reopen task" onClick={()=>updateTask(task,{status:"To do"})}><Check size={15}/></button><div className="taskBody" role="button" tabIndex={0} title="Edit task" onClick={()=>openEditTask(task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openEditTask(task);}}}><b>{task.title}</b><div className="taskMeta"><span>{task.list_name}</span>{task.assignee&&<span>{task.assignee}</span>}</div></div><button className="taskDelete" aria-label="Delete task" onClick={()=>removeTask(task)}><Trash2 size={15}/></button></article>)}
-              </section>
-            </div>}
+            {visibleTasks.length===0?<div className="empty"><ClipboardList size={28}/><h3>{tasks.length===0?"A fresh start.":"Nothing on this list yet."}</h3><p>{tasks.length===0?"Create your first checklist item and keep the team moving.":"Add a task to this checklist when you're ready."}</p><button className="primary" onClick={openTask}><Plus size={16}/> Create a task</button></div>:<TaskBoard tasks={visibleTasks} onChange={moveTasks} renderCard={task=>task.status==="Done"?<article className="taskCard completedTask" key={task.id}><button className="taskCheck checked" aria-label="Reopen task" onClick={()=>updateTask(task,{status:"To do"})}><Check size={15}/></button><div className="taskBody" role="button" tabIndex={0} title="Edit task" onClick={()=>openEditTask(task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openEditTask(task);}}}><b>{task.title}</b><div className="taskMeta"><span>{task.list_name}</span>{task.assignee&&<span>{task.assignee}</span>}</div></div><button className="taskDelete" aria-label="Delete task" onClick={()=>removeTask(task)}><Trash2 size={15}/></button></article>:<article className="taskCard" key={task.id}><button className="taskCheck" aria-label="Mark complete" onClick={()=>updateTask(task,{status:"Done"})}><Check size={15}/></button><div className="taskBody" role="button" tabIndex={0} title="Edit task" onClick={()=>openEditTask(task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openEditTask(task);}}}><b>{task.title}</b>{task.details&&<p>{task.details}</p>}<div className="taskMeta"><span>{task.list_name}</span>{task.due_date&&<span>Due {new Date(task.due_date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>}{task.assignee&&<span>{task.assignee}</span>}<span className={"priority "+task.priority.toLowerCase()}>{task.priority}</span></div></div><select aria-label="Task status" value={task.status} onChange={e=>updateTask(task,{status:e.target.value as Task["status"]})}><option>To do</option><option>In progress</option><option>Done</option></select><button className="taskDelete" aria-label="Delete task" onClick={()=>removeTask(task)}><Trash2 size={15}/></button></article>}/>}
           </>}
           {view==="approvals"&&<>
             <div className="sectionHead"><div><p className="eyebrow">Two-week review</p><h2>{prettyDate(reviewStart)} – {prettyDate(reviewEnd)}</h2></div><div className="reviewNav"><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,-14))}><ChevronLeft size={15}/> Previous</button><input className="monthInput" type="date" value={reviewStart} onChange={e=>e.target.value&&setReviewStart(e.target.value)} aria-label="First day of the review period"/><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,14))}>Next <ChevronRight size={15}/></button></div></div>
@@ -570,7 +584,12 @@ export default function Home() {
           </>}
           {view==="email"&&workspaceId&&<EmailPlanner clientName={currentClient?.name||"Your brand"} clientLogo={currentClient?.logo_url||null} voiceRules={currentClient?.voice_rules||[]} emails={emails} workspaceId={workspaceId} userId={session.user.id} canEdit={!isApprover} canDelete={canManage} onChanged={msg=>{loadEmails();setNotice(msg);}} onOpenApprovals={()=>setView("approvals")}/>}
           {view==="bio"&&!isApprover&&workspaceId&&<LinkInBioEditor clientName={currentClient?.name||""} clientLogo={currentClient?.logo_url||null} workspaceId={workspaceId} userId={session.user.id} onNotice={setNotice} onProfileChange={()=>loadProfile(workspaceId)}/>}
-          {view==="library"&&<><div className="sectionHead"><div><p className="eyebrow">Creative archive</p><h2>All your content</h2></div><div className="search"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search content"/></div></div><div className="libraryList">{filtered.map(p=><div className="libraryItem" key={p.id}><img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{p.publish_date||"No date"} · {p.format} · {p.location}</small></div>{isApprover?<><span className="statusPill">{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>View</button></>:<><select value={p.status} onChange={e=>updateStatus(p,e.target.value)}>{editorStatuses(p.status).map(s=><option key={s}>{s}</option>)}</select><button className="iconButton" onClick={()=>openEdit(p)}>Edit</button><button className="iconButton" onClick={()=>removePost(p)}>Delete</button></>}</div>)}</div></>}
+          {view==="library"&&<><div className="sectionHead"><div><p className="eyebrow">Creative archive</p><h2>All your content</h2></div><div className="search"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search content"/></div></div>
+            {!isApprover&&filtered.length>0&&<div className={"bulkBar"+(selected.length?" active":"")}>
+              <label className="checkLabel"><input type="checkbox" checked={filtered.length>0&&filtered.every(p=>selected.includes(p.id))} ref={el=>{if(el)el.indeterminate=selected.length>0&&!filtered.every(p=>selected.includes(p.id));}} onChange={e=>setSelected(e.target.checked?filtered.map(p=>p.id):[])}/> {selected.length?`${selected.length} selected`:"Select all"}</label>
+              {selected.length>0&&<div className="bulkActions"><span className="muted">Set status to</span><select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}>{editorStatuses("").map(st=><option key={st}>{st}</option>)}</select><button className="primary" disabled={busy} onClick={applyBulkStatus}><Check size={15}/> Apply to {selected.length}</button><button className="textButton" onClick={()=>setSelected([])}>Clear</button></div>}
+            </div>}
+            <div className="libraryList">{filtered.map(p=><div className={"libraryItem"+(selected.includes(p.id)?" picked":"")} key={p.id}>{!isApprover&&<input type="checkbox" className="rowCheck" aria-label={`Select ${p.title}`} checked={selected.includes(p.id)} onChange={e=>setSelected(cur=>e.target.checked?[...cur,p.id]:cur.filter(x=>x!==p.id))}/>}<img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{p.publish_date||"No date"} · {p.format}{p.location&&(currentClient?.locations?.length??0)>0?` · ${p.location}`:""}</small></div>{isApprover?<><span className="statusPill">{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>View</button></>:<><select value={p.status} onChange={e=>updateStatus(p,e.target.value)}>{editorStatuses(p.status).map(st=><option key={st}>{st}</option>)}</select><button className="iconButton" onClick={()=>openEdit(p)}>Edit</button><button className="iconButton" onClick={()=>removePost(p)}>Delete</button></>}</div>)}</div></>}
         </>}
       </div>
     </section>

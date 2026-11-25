@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   if (posts.length === 0) return NextResponse.json({ error: "Posts not found." }, { status: 404 });
 
   // Always link to the official site (preview links are protected by Vercel login).
-  const appUrl = process.env.APP_URL || "https://acai-carioca-studio-public.vercel.app";
+  const appUrl = process.env.APP_URL || "https://contentatelier.vercel.app";
   const sender = userData.user.email || "Content Atelier";
   const rows = posts.map(p => {
     const note = p.approval_note ? `<div style="color:#8d5148;font-size:13px;margin-top:4px">“${esc(p.approval_note)}”</div>` : "";
