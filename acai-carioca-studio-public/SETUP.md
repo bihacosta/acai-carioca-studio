@@ -114,3 +114,11 @@ Run `supabase/add-notifications.sql` once (already applied to the production pro
 
 - **Notify approver** (Approvals tab) emails every approver one summary of the posts awaiting approval in the selected two weeks.
 - When an approver approves or requests changes, the editing team (owner, admins, editors) gets an email automatically.
+
+## 12. Planner features
+Run `supabase/add-planner-features.sql` once (already applied to the production project on Nov 25, 2026).
+
+- **Feed:** Grid / Phone (iPhone-style profile preview) / Stories views, a Colors strip, and a **Drafts** tray. Drag drafts onto the grid, or drag a grid post onto the tray to send it back to drafts.
+- **Post editor:** up to 10 images per post (carousel), Reel cover, **grid framing** (drag the photo inside the 3:4 frame), caption counter (2,200) and hashtag counter (30), saved **caption templates** and **hashtag groups**, "Save as draft", and **comments** (everyone on the team, including approvers).
+- **Calendar:** drag a post to another day to change its date.
+- **Link in bio:** editor under "Link in bio"; the public page lives at `/l/<address>` and is only visible after "Publish page". The public sees the name, photo and links — never posts or comments.
