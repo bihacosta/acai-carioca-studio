@@ -37,3 +37,4 @@
 .teamEmpty{padding:36px 20px}
 .roleGuide{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:28px}.roleGuide div{border-top:1px solid #d9c9bd;padding-top:8px;display:flex;flex-direction:column;gap:3px;font-size:12px}.roleGuide b{color:var(--wine);font:16px 'Playfair Display',serif}.roleGuide span{color:var(--muted)}
 .waitingActions{margin-top:26px}
+.notifyBar{background:#fffdfa}.notifyBar .secondary{padding:10px 14px}

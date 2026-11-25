@@ -101,3 +101,16 @@ Run `supabase/add-team-management.sql` once in Supabase → SQL Editor (already 
 - Anyone who signs in without access sees an "Almost there" screen and is added to **Access requests** automatically.
 - The owner (and admins) open the **Team** tab to give access (Editor, Approver, Viewer or Admin), change roles, remove people or decline requests.
 - The owner's own access cannot be changed or removed from the app.
+
+## 11. Approval emails (Gmail)
+Run `supabase/add-notifications.sql` once (already applied to the production project on Nov 25, 2026).
+
+1. Turn on 2-Step Verification on the Gmail account that will send the emails.
+2. Create an app password at https://myaccount.google.com/apppasswords (name it "Acai Carioca Studio").
+3. In Vercel → Project → Settings → Environment Variables, add (Production and Preview):
+   - `GMAIL_USER` = the Gmail address
+   - `GMAIL_APP_PASSWORD` = the 16-letter app password
+4. Redeploy.
+
+- **Notify approver** (Approvals tab) emails every approver one summary of the posts awaiting approval in the selected two weeks.
+- When an approver approves or requests changes, the editing team (owner, admins, editors) gets an email automatically.
