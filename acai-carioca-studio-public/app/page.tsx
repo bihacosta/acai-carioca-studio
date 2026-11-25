@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock } from "lucide-react";
+import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail } from "lucide-react";
 
 type Task = {
   id: string; title: string; details: string | null; list_name: string; due_date: string | null;
@@ -259,6 +259,22 @@ export default function Home() {
     if(error)setNotice(error.message);else{setNotice("Request declined.");await loadTeam();}
     setBusy(false);
   }
+  async function notify(kind:"submitted"|"reviewed",ids:string[]){
+    if(!supabase||ids.length===0)return {ok:false,error:"Nothing to send."};
+    const {data:{session:current}}=await supabase.auth.getSession();
+    try{
+      const res=await fetch("/api/notify",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${current?.access_token||""}`},body:JSON.stringify({kind,postIds:ids,periodStart:reviewStart,periodEnd:reviewEnd})});
+      const out=await res.json().catch(()=>({}));
+      return res.ok?{ok:true,sent:out.sent as number}:{ok:false,error:(out.error as string)||"Could not send the email."};
+    }catch{return {ok:false,error:"Could not reach the email service."};}
+  }
+  async function notifyApprover(){
+    if(!confirm(`Email the approver about ${awaiting.length} post${awaiting.length===1?"":"s"} awaiting approval (${prettyDate(reviewStart)} – ${prettyDate(reviewEnd)})?`))return;
+    setBusy(true);setNotice("");
+    const r=await notify("submitted",awaiting.map(p=>p.id));
+    setNotice(r.ok?"The approver was notified by email.":"Email not sent: "+r.error);
+    setBusy(false);
+  }
   async function review(ids:string[],decision:"Approved"|"Changes requested",note=""){
     if(!supabase||ids.length===0)return;
     setBusy(true);setNotice("");
@@ -268,7 +284,9 @@ export default function Home() {
       const updated=(data||[]) as Post[];
       setPosts(p=>p.map(x=>updated.find(u=>u.id===x.id)||x));
       setChangesFor(null);setReviewNote("");
-      setNotice(decision==="Approved"?`${updated.length} post${updated.length===1?"":"s"} approved.`:"Changes requested. The team will see your comment.");
+      let msg=decision==="Approved"?`${updated.length} post${updated.length===1?"":"s"} approved.`:"Changes requested. The team will see your comment.";
+      if(updated.length>0){const r=await notify("reviewed",updated.map(u=>u.id));if(r.ok)msg+=" The team was notified by email.";else if(isApprover)msg+=" (Email not sent: "+r.error+")";}
+      setNotice(msg);
     }
     setBusy(false);
   }
@@ -352,6 +370,7 @@ export default function Home() {
           {view==="approvals"&&<>
             <div className="sectionHead"><div><p className="eyebrow">TWO-WEEK REVIEW</p><h2>{prettyDate(reviewStart)} – {prettyDate(reviewEnd)}</h2></div><div className="reviewNav"><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,-14))}><ChevronLeft size={15}/> Previous</button><input className="monthInput" type="date" value={reviewStart} onChange={e=>e.target.value&&setReviewStart(e.target.value)} aria-label="First day of the review period"/><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,14))}>Next <ChevronRight size={15}/></button></div></div>
             {awaiting.length===0?<div className="empty"><BadgeCheck size={28}/><h3>Nothing waiting for approval.</h3><p>{allAwaiting>0?`${allAwaiting} post${allAwaiting===1?" is":"s are"} awaiting approval in other weeks. Use Previous / Next to find ${allAwaiting===1?"it":"them"}.`:canReview?"When the team sends posts for review, they will appear here.":"Set a post's status to “Awaiting approval” to send it here for review."}</p></div>:<>
+              {!isApprover&&<div className="approveAllBar notifyBar"><span>Ready to send these two weeks for approval?</span><button className="secondary" disabled={busy} onClick={notifyApprover}><Mail size={15}/> Notify approver</button></div>}
               {canReview&&<div className="approveAllBar"><span><b>{awaiting.length}</b> post{awaiting.length===1?"":"s"} awaiting your approval in these two weeks.</span><button className="primary" disabled={busy} onClick={()=>{if(confirm(`Approve all ${awaiting.length} post${awaiting.length===1?"":"s"} from ${prettyDate(reviewStart)} to ${prettyDate(reviewEnd)}?`))review(awaiting.map(p=>p.id),"Approved");}}><Check size={15}/> Approve all {awaiting.length}</button></div>}
               <div className="reviewList">{awaiting.map(p=><article className="reviewCard" key={p.id}>
                 <img src={p.image_url} alt={p.title} onClick={()=>openEdit(p)}/>
