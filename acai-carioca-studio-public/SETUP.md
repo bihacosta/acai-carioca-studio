@@ -95,8 +95,9 @@ Run `supabase/add-approvals.sql` once in Supabase → SQL Editor (already applie
 - Approvers can see everything but cannot create, edit or delete posts or tasks.
 - The **Approvals** tab shows two weeks of content at a time, with "Approve all" for the period and per-post comments.
 
-To add an approver: ask them to sign in once (e.g. with Google), copy their user UUID from Authentication → Users, then run:
-```sql
-insert into public.workspace_members(workspace_id,user_id,role)
-values ('WORKSPACE_UUID','APPROVER_USER_UUID','approver');
-```
+## 10. Team management (inside the app)
+Run `supabase/add-team-management.sql` once in Supabase → SQL Editor (already applied to the production project on Nov 25, 2026).
+
+- Anyone who signs in without access sees an "Almost there" screen and is added to **Access requests** automatically.
+- The owner (and admins) open the **Team** tab to give access (Editor, Approver, Viewer or Admin), change roles, remove people or decline requests.
+- The owner's own access cannot be changed or removed from the app.

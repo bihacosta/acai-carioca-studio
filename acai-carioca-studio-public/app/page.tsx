@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock } from "lucide-react";
 
 type Task = {
   id: string; title: string; details: string | null; list_name: string; due_date: string | null;
@@ -21,6 +21,13 @@ const pillars = ["Product","Lifestyle","Promotion","Brand Awareness","Community"
 const statuses = ["Idea","In production","Ready","Awaiting approval","Changes requested","Approved","Scheduled","Published"];
 const reviewOnly = ["Approved","Changes requested"];
 const editorStatuses = (current:string)=>statuses.filter(s=>!reviewOnly.includes(s)||s===current);
+type TeamRow = { user_id: string; email: string; role: string | null; since: string; pending: boolean };
+const roleOptions = [
+  {value:"editor",label:"Editor",hint:"Creates and edits posts and tasks"},
+  {value:"approver",label:"Approver",hint:"Sees everything, approves or requests changes"},
+  {value:"viewer",label:"Viewer",hint:"Can only look"},
+  {value:"admin",label:"Admin",hint:"Editor + can manage the team"}
+];
 const toISO = (d:Date)=>d.toISOString().slice(0,10);
 const addDays = (iso:string,n:number)=>{const d=new Date(iso+"T12:00:00");d.setDate(d.getDate()+n);return toISO(d);};
 const nextMonday = ()=>{const d=new Date();d.setHours(12);const diff=(8-d.getDay())%7||7;d.setDate(d.getDate()+diff);return toISO(d);};
@@ -39,7 +46,10 @@ export default function Home() {
   const [taskForm,setTaskForm] = useState({title:"",details:"",list_name:"General",due_date:"",priority:"Normal" as "Low"|"Normal"|"High",assignee:""});
   const [workspaceId,setWorkspaceId] = useState<string|null>(null);
   const [role,setRole] = useState<string>("");
-  const [view,setView] = useState<"feed"|"calendar"|"library"|"todo"|"approvals">("feed");
+  const [view,setView] = useState<"feed"|"calendar"|"library"|"todo"|"approvals"|"team">("feed");
+  const [noAccess,setNoAccess] = useState(false);
+  const [team,setTeam] = useState<TeamRow[]>([]);
+  const [grantRole,setGrantRole] = useState<Record<string,string>>({});
   const [reviewStart,setReviewStart] = useState(nextMonday());
   const [changesFor,setChangesFor] = useState<string|null>(null);
   const [reviewNote,setReviewNote] = useState("");
@@ -76,6 +86,8 @@ export default function Home() {
         setTasks([]);
         setWorkspaceId(null);
         setRole("");
+        setNoAccess(false);
+        setTeam([]);
         setLoading(false);
       }
     });
@@ -107,7 +119,8 @@ export default function Home() {
     }
 
     if(!membership){
-      setNotice("Your signed-in account has no workspace membership yet. Check that the user_id in workspace_members matches the account you are signed into.");
+      await supabase.rpc("request_access");
+      setNoAccess(true);
       setPosts([]);
       setTasks([]);
       setWorkspaceId(null);
@@ -115,8 +128,10 @@ export default function Home() {
       return;
     }
 
+    setNoAccess(false);
     setWorkspaceId(membership.workspace_id);
     setRole(membership.role);
+    if(membership.role==="owner"||membership.role==="admin")loadTeam();
     if(membership.role==="approver")setView("approvals");
 
     const {data,error}=await supabase
@@ -217,6 +232,33 @@ export default function Home() {
     const {error}=await supabase.from("posts").update({status}).eq("id",post.id).eq("workspace_id",workspaceId);
     if(error)setNotice(error.message);else setPosts(p=>p.map(x=>x.id===post.id?{...x,status}:x));
   }
+  async function loadTeam(){
+    if(!supabase)return;
+    const {data,error}=await supabase.rpc("list_team");
+    if(error)setNotice("Could not load your team: "+error.message);else setTeam((data||[]) as TeamRow[]);
+  }
+  async function setMemberRole(person:TeamRow,newRole:string){
+    if(!supabase)return;
+    setBusy(true);setNotice("");
+    const {error}=await supabase.rpc("set_member_role",{target_user:person.user_id,new_role:newRole});
+    if(error)setNotice(error.message);
+    else{setNotice(person.pending?`${person.email} now has access as ${newRole}.`:`${person.email} is now ${newRole}.`);await loadTeam();}
+    setBusy(false);
+  }
+  async function removeMember(person:TeamRow){
+    if(!supabase||!confirm(`Remove ${person.email} from the workspace? They will lose access immediately. Their posts stay in the studio.`))return;
+    setBusy(true);setNotice("");
+    const {error}=await supabase.rpc("remove_member",{target_user:person.user_id});
+    if(error)setNotice(error.message);else{setNotice(`${person.email} was removed.`);await loadTeam();}
+    setBusy(false);
+  }
+  async function dismissRequest(person:TeamRow){
+    if(!supabase||!confirm(`Decline the access request from ${person.email}?`))return;
+    setBusy(true);setNotice("");
+    const {error}=await supabase.rpc("dismiss_request",{target_user:person.user_id});
+    if(error)setNotice(error.message);else{setNotice("Request declined.");await loadTeam();}
+    setBusy(false);
+  }
   async function review(ids:string[],decision:"Approved"|"Changes requested",note=""){
     if(!supabase||ids.length===0)return;
     setBusy(true);setNotice("");
@@ -248,6 +290,9 @@ export default function Home() {
   function openEdit(p:Post){setEditing(p);setSelectedFile(null);setForm({title:p.title,date:p.publish_date||"",format:p.format,location:p.location,pillar:p.pillar,status:p.status,caption:p.caption||""});setModal(true);}
 
   const isApprover=role==="approver";
+  const canManage=role==="owner"||role==="admin";
+  const pendingPeople=team.filter(t=>t.pending);
+  const members=team.filter(t=>!t.pending);
   const canReview=role==="owner"||role==="approver";
   const reviewEnd=addDays(reviewStart,13);
   const inWindow=posts.filter(p=>p.publish_date&&p.publish_date>=reviewStart&&p.publish_date<=reviewEnd).sort((a,b)=>(a.publish_date||"").localeCompare(b.publish_date||""));
@@ -268,6 +313,8 @@ export default function Home() {
 
   if(!session)return <main className="loginShell"><div className="loginCard"><p className="eyebrow">AÇAÍ CARIOCA · CONTENT ATELIER</p><h1>Make room for<br/><i>good ideas.</i></h1><p className="muted">Your brand's visual workspace.</p><form onSubmit={authenticate} className="loginForm"><label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@acaicarioca.com"/></label><label>Password<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label><button className="primary" disabled={busy}>{busy?"Please wait…":authMode==="login"?"Sign in":"Create account"}</button></form><div className="orDivider"><span>or</span></div><button type="button" className="googleButton" onClick={signInWithGoogle} disabled={busy}>Continue with Google</button><button className="textButton" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?"New to the studio? Create an account":"Already have an account? Sign in"}</button>{notice&&<p className="notice">{notice}</p>}<p className="muted legalLink"><a href="/privacy">Privacy Policy</a></p></div></main>;
 
+  if(noAccess)return <main className="loginShell"><div className="loginCard"><p className="eyebrow">AÇAÍ CARIOCA · CONTENT ATELIER</p><h1>Almost<br/><i>there.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Your access request was sent to the workspace owner. Once it's approved, refresh this page to open the studio.</p><div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="primary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
+
   return <main className="appShell">
     <aside className="sidebar"><div className="brand"><span className="brandMark">AC</span><div><b>açaí carioca.</b><small>CONTENT ATELIER</small></div></div>
       <p className="sideLabel">WORKSPACE</p>
@@ -275,13 +322,14 @@ export default function Home() {
       <button className={view==="calendar"?"nav active":"nav"} onClick={()=>setView("calendar")}><CalendarDays size={17}/> Calendar</button>
       <button className={view==="library"?"nav active":"nav"} onClick={()=>setView("library")}><Images size={17}/> Creative library</button>
       <button className={view==="approvals"?"nav active":"nav"} onClick={()=>setView("approvals")}><BadgeCheck size={17}/> Approvals{allAwaiting>0&&<span className="navBadge">{allAwaiting}</span>}</button>
+      {canManage&&<button className={view==="team"?"nav active":"nav"} onClick={()=>{setView("team");loadTeam();}}><Users size={17}/> Team{pendingPeople.length>0&&<span className="navBadge">{pendingPeople.length}</span>}</button>}
       {!isApprover&&<button className={view==="todo"?"nav active":"nav"} onClick={()=>setView("todo")}><ListChecks size={17}/> To-do</button>}
       <div className="sidebarBottom"><p className="eyebrow">YOUR TEAM</p><div className="userLine"><span className="avatar">{session.user.email?.[0]?.toUpperCase()}</span><span>{session.user.email}</span></div><button className="nav" onClick={()=>supabase?.auth.signOut()} ><LogOut size={16}/> Sign out</button></div>
     </aside>
     <section className="mainArea">
-      <header className="topbar"><div><p className="eyebrow">SAN DIEGO · CALIFORNIA</p><span className="topTitle">The art of showing up.</span></div>{!isApprover&&<button className="primary compact" onClick={view==="todo"?openTask:openNew}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</header>
+      <header className="topbar"><div><p className="eyebrow">SAN DIEGO · CALIFORNIA</p><span className="topTitle">The art of showing up.</span></div>{!isApprover&&view!=="team"&&<button className="primary compact" onClick={view==="todo"?openTask:openNew}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</header>
       <div className="content">
-        <div className="welcome"><div><p className="eyebrow">YOUR BRAND, VISUALLY CURATED</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Review two weeks of content at a time.":"Small steps, beautifully organized."}</p></div>{view==="approvals"?<div className="stats"><div><b>{awaiting.length}</b><small>AWAITING</small></div><div><b>{inWindow.filter(p=>p.status==="Approved").length}</b><small>APPROVED</small></div><div><b>{inWindow.filter(p=>p.status==="Changes requested").length}</b><small>CHANGES</small></div></div>:<div className="stats"><div><b>{view==="todo"?tasks.length:posts.length}</b><small>{view==="todo"?"TASKS":"CONTENT"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status!=="Done").length:count("In production")}</b><small>{view==="todo"?"OPEN":"IN PROGRESS"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status==="Done").length:count("Scheduled")}</b><small>{view==="todo"?"COMPLETED":"SCHEDULED"}</small></div></div>}</div>
+        <div className="welcome"><div><p className="eyebrow">YOUR BRAND, VISUALLY CURATED</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Review two weeks of content at a time.":view==="team"?"Decide who can see and work on your calendar.":"Small steps, beautifully organized."}</p></div>{view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length}</b><small>AWAITING</small></div><div><b>{inWindow.filter(p=>p.status==="Approved").length}</b><small>APPROVED</small></div><div><b>{inWindow.filter(p=>p.status==="Changes requested").length}</b><small>CHANGES</small></div></div>:<div className="stats"><div><b>{view==="todo"?tasks.length:posts.length}</b><small>{view==="todo"?"TASKS":"CONTENT"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status!=="Done").length:count("In production")}</b><small>{view==="todo"?"OPEN":"IN PROGRESS"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status==="Done").length:count("Scheduled")}</b><small>{view==="todo"?"COMPLETED":"SCHEDULED"}</small></div></div>}</div>
         {notice&&<div className="noticeBar" onClick={()=>setNotice("")}>{notice}<X size={14}/></div>}
         {loading?<p className="muted">Loading your workspace…</p>:<>
           {view==="feed"&&<><div className="sectionHead"><div><p className="eyebrow">INSTAGRAM PRESENCE</p><h2>Feed preview</h2></div><span className="muted">{posts.length} pieces · drag to rearrange</span></div>{posts.length===0?<div className="empty"><Images size={28}/><h3>A blank canvas.</h3><p>Upload your first creative to begin building the grid.</p><button className="primary" onClick={openNew}><Plus size={16}/> Add your first post</button></div>:<div className="feedGrid">{posts.map(p=><article key={p.id} className="feedTile" draggable={!isApprover} onDragStart={()=>setDragged(p.id)} onDragOver={e=>e.preventDefault()} onDrop={()=>!isApprover&&reorder(p.id)} onClick={()=>openEdit(p)}><img src={p.image_url} alt={p.title}/><div className="tileOverlay"><b>{p.title}</b><span>{p.publish_date||"No date"} · {p.format}</span></div>{p.format==="Reel"&&<span className="formatIcon">▶</span>}{p.format==="Carousel"&&<span className="formatIcon">▤</span>}</article>)}</div>}</>}
@@ -319,6 +367,14 @@ export default function Home() {
               </article>)}</div>
             </>}
             {reviewed.length>0&&<><div className="sectionHead reviewedHead"><div><p className="eyebrow">ALSO IN THESE TWO WEEKS</p><h2>Other content</h2></div></div><div className="libraryList">{reviewed.map(p=><div className="libraryItem" key={p.id}><img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{prettyDate(p.publish_date)} · {p.format}{p.approval_note?" · “"+p.approval_note+"”":""}</small></div><span className={"statusPill"+(p.status==="Approved"?" ok":p.status==="Changes requested"?" warn":"")}>{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>{isApprover?"View":"Edit"}</button></div>)}</div></>}
+          </>}
+          {view==="team"&&canManage&&<>
+            <div className="sectionHead"><div><p className="eyebrow">WAITING FOR YOU</p><h2>Access requests</h2></div><span className="muted">People who signed in and asked to join</span></div>
+            {pendingPeople.length===0?<div className="empty teamEmpty"><UserPlus size={26}/><h3>No pending requests.</h3><p>Share the studio link. When someone signs in (with Google or email), they will show up here for you to approve.</p></div>:
+            <div className="teamList">{pendingPeople.map(p=><div className="teamRow pendingRow" key={p.user_id}><span className="avatar">{p.email?.[0]?.toUpperCase()}</span><div className="teamInfo"><b>{p.email}</b><small><Clock size={11}/> Requested {new Date(p.since).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</small></div><select aria-label="Role" value={grantRole[p.user_id]||"editor"} onChange={e=>setGrantRole({...grantRole,[p.user_id]:e.target.value})}>{roleOptions.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select><button className="primary" disabled={busy} onClick={()=>setMemberRole(p,grantRole[p.user_id]||"editor")}><Check size={15}/> Give access</button><button className="iconButton" disabled={busy} onClick={()=>dismissRequest(p)}>Decline</button></div>)}</div>}
+            <div className="sectionHead reviewedHead"><div><p className="eyebrow">WITH ACCESS</p><h2>Members</h2></div></div>
+            <div className="teamList">{members.map(m=><div className="teamRow" key={m.user_id}><span className="avatar">{m.email?.[0]?.toUpperCase()}</span><div className="teamInfo"><b>{m.email}{m.user_id===session.user.id?" (you)":""}</b><small>Member since {new Date(m.since).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</small></div>{m.role==="owner"||m.user_id===session.user.id?<span className="statusPill">{m.role}</span>:<><select aria-label="Role" value={m.role||""} disabled={busy} onChange={e=>setMemberRole(m,e.target.value)}>{roleOptions.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select><button className="iconButton" disabled={busy} onClick={()=>removeMember(m)}>Remove</button></>}</div>)}</div>
+            <div className="roleGuide">{roleOptions.map(r=><div key={r.value}><b>{r.label}</b><span>{r.hint}</span></div>)}</div>
           </>}
           {view==="library"&&<><div className="sectionHead"><div><p className="eyebrow">CREATIVE ARCHIVE</p><h2>All your content</h2></div><div className="search"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search content"/></div></div><div className="libraryList">{filtered.map(p=><div className="libraryItem" key={p.id}><img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{p.publish_date||"No date"} · {p.format} · {p.location}</small></div>{isApprover?<><span className="statusPill">{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>View</button></>:<><select value={p.status} onChange={e=>updateStatus(p,e.target.value)}>{editorStatuses(p.status).map(s=><option key={s}>{s}</option>)}</select><button className="iconButton" onClick={()=>openEdit(p)}>Edit</button><button className="iconButton" onClick={()=>removePost(p)}>Delete</button></>}</div>)}</div></>}
         </>}
