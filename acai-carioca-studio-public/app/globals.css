@@ -684,3 +684,15 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
   .studioTop .brand small,.studioTop .brand b{display:none}
 }
 @media (prefers-reduced-motion:reduce){.swatchCard,.studio{animation:none}.swatchCard:hover{transform:none}}
+
+/* Page header: one block on desktop, slim client bar on the phone */
+@media(min-width:761px){.topbar{display:none}}
+.topbarText{display:flex;align-items:center;gap:10px}
+.topbarText .clientLogo{width:30px;height:30px;border-radius:50%}
+.pageContext{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;font-size:14px;color:var(--muted)}
+.pageContext .clientLogo{width:24px;height:24px;border-radius:50%}
+.pageContext b{font-weight:600;color:var(--wine)}
+.pageContext span:not(.clientLogo)::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--hair2);margin:0 8px 2px 0;vertical-align:middle}
+.welcomeSide{display:flex;flex-direction:column;align-items:flex-end;gap:16px}
+.welcomeSide .deskOnly:empty{display:none}
+@media(max-width:760px){.deskOnly{display:none}.pageContext .clientLogo,.pageContext b{display:none}.pageContext span:not(.clientLogo)::before{display:none}.welcomeSide{align-items:stretch}}
