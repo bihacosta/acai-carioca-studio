@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { uploadImage } from "@/lib/media";
 import { Plus, Trash2, ChevronUp, ChevronDown, Copy, ExternalLink, Check } from "lucide-react";
 
-type Page = { workspace_id: string; slug: string; title: string; subtitle: string | null; avatar_url: string | null; published: boolean };
+type Page = { workspace_id: string; slug: string; title: string; subtitle: string | null; avatar_url: string | null; published: boolean; instagram_handle: string | null; website: string | null; highlights: string[] };
 type Link = { id: string; label: string; url: string; sort_order: number };
 
 const OFFICIAL = "https://acai-carioca-studio-public.vercel.app";
@@ -26,7 +26,7 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
       supabase.from("bio_pages").select("*").eq("workspace_id", workspaceId).maybeSingle(),
       supabase.from("bio_links").select("id,label,url,sort_order").eq("workspace_id", workspaceId).order("sort_order")
     ]);
-    setPage((p as Page) || { workspace_id: workspaceId, slug: "acaicarioca", title: "Açaí Carioca", subtitle: "Brazilian açaí · Pacific Beach & Point Loma", avatar_url: null, published: false });
+    setPage((p as Page) || { workspace_id: workspaceId, slug: "acaicarioca", title: "Açaí Carioca", subtitle: "Brazilian açaí · Pacific Beach & Point Loma", avatar_url: null, published: false, instagram_handle: null, website: null, highlights: [] });
     setLinks((l || []) as Link[]);
     setLoading(false);
   }
@@ -96,9 +96,16 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
             <label className="bioAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : "AC"}<input type="file" accept="image/*" onChange={e => uploadAvatar(e.target.files?.[0])} /></label>
             <div className="bioFields">
               <label>Name<input value={page.title} maxLength={60} onChange={e => setPage({ ...page, title: e.target.value })} onBlur={() => savePage(page)} /></label>
-              <label>Short bio<input value={page.subtitle || ""} maxLength={150} onChange={e => setPage({ ...page, subtitle: e.target.value })} onBlur={() => savePage(page)} /></label>
+              <label>Bio<textarea rows={5} value={page.subtitle || ""} maxLength={300} onChange={e => setPage({ ...page, subtitle: e.target.value })} onBlur={() => savePage(page)} /></label>
             </div>
           </div>
+          <div className="bioTwo">
+            <label>Instagram username<div className="slugInput"><span>@</span><input value={page.instagram_handle || ""} maxLength={30} placeholder="acaicarioca.usa"
+              onChange={e => setPage({ ...page, instagram_handle: e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, "") || null })} onBlur={() => savePage(page)} /></div></label>
+            <label>Website<input value={page.website || ""} maxLength={100} placeholder="www.acaicarioca.com" onChange={e => setPage({ ...page, website: e.target.value || null })} onBlur={() => savePage(page)} /></label>
+          </div>
+          <label>Story highlights <small className="muted">(separate with commas, shown in the phone preview)</small>
+            <input value={(page.highlights || []).join(", ")} onChange={e => setPage({ ...page, highlights: e.target.value.split(",").map(x => x.trim()).filter(Boolean).slice(0, 10) })} onBlur={() => savePage(page)} /></label>
           <label className="bioSlug">Page address
             <div className="slugInput"><span>{OFFICIAL.replace("https://", "")}/l/</span>
               <input value={page.slug} maxLength={40} onChange={e => setPage({ ...page, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} onBlur={() => savePage(page)} /></div>
@@ -151,6 +158,7 @@ export default function LinkInBioEditor({ workspaceId, userId, onNotice, onProfi
           <div className="phoneScreen bioPreview">
             <div className="bioPreviewAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : "AC"}</div>
             <h3>{page.title}</h3>
+            {page.instagram_handle && <span className="bioHandle">@{page.instagram_handle}</span>}
             {page.subtitle && <p>{page.subtitle}</p>}
             <div className="bioPreviewLinks">{links.map(l => <span key={l.id}>{l.label}</span>)}{links.length === 0 && <span className="ghost">Your links appear here</span>}</div>
           </div>

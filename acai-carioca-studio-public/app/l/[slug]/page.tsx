@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-type Page = { workspace_id: string; title: string; subtitle: string | null; avatar_url: string | null };
+type Page = { workspace_id: string; title: string; subtitle: string | null; avatar_url: string | null; instagram_handle: string | null };
 type Link = { id: string; label: string; url: string };
 
 const safeHref = (u: string) => /^(https?:\/\/|mailto:|tel:)/i.test(u) ? u : "#";
@@ -18,7 +18,7 @@ export default function LinkPage() {
   useEffect(() => {
     if (!supabase || !slug) { setState("missing"); return; }
     (async () => {
-      const { data: p } = await supabase!.from("bio_pages").select("workspace_id,title,subtitle,avatar_url").eq("slug", String(slug).toLowerCase()).eq("published", true).maybeSingle();
+      const { data: p } = await supabase!.from("bio_pages").select("workspace_id,title,subtitle,avatar_url,instagram_handle").eq("slug", String(slug).toLowerCase()).eq("published", true).maybeSingle();
       if (!p) { setState("missing"); return; }
       const { data: l } = await supabase!.from("bio_links").select("id,label,url").eq("workspace_id", (p as Page).workspace_id).order("sort_order");
       setPage(p as Page); setLinks((l || []) as Link[]); setState("ready");
@@ -34,6 +34,7 @@ export default function LinkPage() {
         <div className="linkCard">
           <div className="linkAvatar">{page.avatar_url ? <img src={page.avatar_url} alt="" /> : "AC"}</div>
           <h1>{page.title}</h1>
+          {page.instagram_handle && <a className="linkHandle" href={`https://www.instagram.com/${page.instagram_handle}/`} target="_blank" rel="noopener noreferrer">@{page.instagram_handle}</a>}
           {page.subtitle && <p className="linkBio">{page.subtitle}</p>}
           <nav className="linkList">
             {links.map(l => <a key={l.id} href={safeHref(l.url)} target={l.url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer">{l.label}</a>)}

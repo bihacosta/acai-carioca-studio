@@ -57,7 +57,7 @@ export default function Home() {
   const [feedMode,setFeedMode] = useState<"grid"|"phone"|"stories">("grid");
   const [showColors,setShowColors] = useState(false);
   const [snippets,setSnippets] = useState<Snippet[]>([]);
-  const [profile,setProfile] = useState<{title:string;subtitle?:string|null;avatar_url?:string|null}>({title:"Açaí Carioca",subtitle:"Brazilian açaí · Pacific Beach & Point Loma"});
+  const [profile,setProfile] = useState<{title:string;subtitle?:string|null;avatar_url?:string|null;instagram_handle?:string|null;website?:string|null;highlights?:string[]|null}>({title:"Açaí Carioca"});
   const [editorPreset,setEditorPreset] = useState<{format?:string;date?:string}|undefined>(undefined);
   const [moreOpen,setMoreOpen] = useState(false);
   const [noAccess,setNoAccess] = useState(false);
@@ -197,7 +197,7 @@ export default function Home() {
   }
   async function loadProfile(ws:string){
     if(!supabase)return;
-    const {data}=await supabase.from("bio_pages").select("title,subtitle,avatar_url").eq("workspace_id",ws).maybeSingle();
+    const {data}=await supabase.from("bio_pages").select("title,subtitle,avatar_url,instagram_handle,website,highlights").eq("workspace_id",ws).maybeSingle();
     if(data)setProfile(data as any);
   }
   function closeEditor(){setModal(false);setEditing(null);setEditorPreset(undefined);}

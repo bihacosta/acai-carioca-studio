@@ -15,7 +15,7 @@ export type FeedPost = {
   id: string; title: string; image_url: string; publish_date: string | null; format: string;
   crop_x?: number; crop_y?: number; cover_url?: string | null; extra_images?: string[]; on_grid?: boolean; status?: string;
 };
-export type Profile = { title: string; subtitle?: string | null; avatar_url?: string | null };
+export type Profile = { title: string; subtitle?: string | null; avatar_url?: string | null; instagram_handle?: string | null; website?: string | null; highlights?: string[] | null };
 
 /** The picture Instagram shows in the grid: Reel cover if set, else the first image. */
 export const thumbOf = (p: FeedPost) => (p.format === "Reel" && p.cover_url) ? p.cover_url : p.image_url;
@@ -152,12 +152,14 @@ export default function FeedGrid({ posts, drafts, disabled, mode, profile, showC
             <div className="phoneFrame">
               <div className="phoneNotch" />
               <div className="phoneScreen">
+                <div className="phoneTopBar"><b>{profile.instagram_handle || "acaicarioca"}</b></div>
                 <div className="phoneProfile">
                   <div className="phoneAvatar">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : "AC"}</div>
-                  <div className="phoneStats"><div><b>{posts.length}</b><span>posts</span></div><div><b>—</b><span>followers</span></div><div><b>—</b><span>following</span></div></div>
+                  <div className="phoneStats"><div><b>{posts.length}</b><span>planned</span></div><div><b>—</b><span>followers</span></div><div><b>—</b><span>following</span></div></div>
                 </div>
-                <div className="phoneBio"><b>{profile.title}</b>{profile.subtitle && <p>{profile.subtitle}</p>}</div>
+                <div className="phoneBio"><b>{profile.title}</b>{profile.subtitle && <p>{profile.subtitle}</p>}{profile.website && <span className="phoneLink">{profile.website}</span>}</div>
                 <div className="phoneButtons"><span>Following</span><span>Message</span></div>
+                {(profile.highlights?.length ?? 0) > 0 && <div className="phoneHighlights">{profile.highlights!.map(h => <div key={h}><span>{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : "AC"}</span><small>{h}</small></div>)}</div>}
                 {palette}
                 {grid}
               </div>

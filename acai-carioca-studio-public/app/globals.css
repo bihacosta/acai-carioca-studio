@@ -445,3 +445,20 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 @media(max-width:760px){.topActions .phoneOnly.roundIcon{display:none}}
 .bioCard .bioAvatar{display:grid;flex-direction:unset;gap:0;font:600 18px var(--ui);color:var(--cream)}
 @media(max-width:760px){.sectionHead.feedHead{align-items:stretch;flex-direction:column}}
+/* Real profile details */
+.phoneTopBar{position:sticky;top:0;background:#fff;padding:0 16px 12px;font:600 17px var(--ui);color:#111;margin-top:-10px;z-index:1}
+.phoneLink{display:block;color:#00376b;font-weight:600;font-size:13px;margin-top:2px}
+.phoneHighlights{display:flex;gap:14px;padding:2px 16px 14px;overflow-x:auto;scrollbar-width:none}
+.phoneHighlights>div{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0}
+.phoneHighlights span{width:58px;height:58px;border-radius:50%;background:var(--wine);color:var(--cream);display:grid;place-items:center;font:600 12px var(--ui);overflow:hidden;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #dbdbdb}
+.phoneHighlights img{width:100%;height:100%;object-fit:cover}
+.phoneHighlights small{font-size:11px;color:#111}
+.bioCard textarea{border:1px solid var(--hair2);border-radius:var(--r-sm);padding:10px 12px;font:14px/1.45 var(--ui);background:var(--surface);color:var(--ink);resize:vertical}
+.bioTwo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bioCard label small{font-weight:400}
+.bioHandle{font-size:12px;color:var(--wine2);font-weight:600;margin-bottom:4px}
+.bioPreview p{white-space:pre-line;line-height:1.45}
+.linkHandle{color:var(--wine2);font-weight:600;font-size:14px;text-decoration:none;margin:-2px 0 8px}
+.linkBio{white-space:pre-line}
+.phoneBio p{white-space:pre-line}
+@media(max-width:760px){.bioTwo{grid-template-columns:1fr}}

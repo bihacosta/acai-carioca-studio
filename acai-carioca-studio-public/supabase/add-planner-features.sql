@@ -101,3 +101,8 @@ create policy "editors write bio links" on public.bio_links for all
 
 grant select on public.bio_pages, public.bio_links to anon;
 grant select, insert, update, delete on public.bio_pages, public.bio_links to authenticated;
+
+-- Instagram profile details for the phone preview (added Nov 25, 2026)
+alter table public.bio_pages add column if not exists instagram_handle text check (instagram_handle is null or instagram_handle ~ '^[a-z0-9._]{1,30}$');
+alter table public.bio_pages add column if not exists website text;
+alter table public.bio_pages add column if not exists highlights text[] not null default '{}';
