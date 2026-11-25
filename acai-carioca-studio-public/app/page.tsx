@@ -136,6 +136,13 @@ export default function Home() {
     setBusy(false);
   }
 
+  async function signInWithGoogle(){
+    if(!supabase){setNotice("Add your Supabase environment variables to connect the app.");return;}
+    setBusy(true);setNotice("");
+    const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}});
+    if(error){setNotice(error.message);setBusy(false);}
+  }
+
   async function savePost(e:React.FormEvent){
     e.preventDefault(); if(!supabase)return;
     if(!selectedFile && !editing){setNotice("Choose an image to preview this post in the feed.");return;}
@@ -225,7 +232,7 @@ export default function Home() {
 
   if(!supabase)return <main className="setup"><div className="setupCard"><p className="eyebrow">AÇAÍ CARIOCA · CONTENT ATELIER</p><h1>Welcome to your<br/><i>creative studio.</i></h1><p className="muted">The app is ready. Connect your Supabase project to activate team login, shared storage and the live content calendar.</p><div className="setupSteps"><b>1. Create a Supabase project</b><span>2. Run the included database.sql</span><span>3. Create the storage bucket: creative-assets</span><span>4. Add the keys to .env.local</span><span>5. Deploy to Vercel</span></div><p className="hint">See SETUP.md in the project folder for the full setup guide.</p></div></main>;
 
-  if(!session)return <main className="loginShell"><div className="loginCard"><p className="eyebrow">AÇAÍ CARIOCA · CONTENT ATELIER</p><h1>Make room for<br/><i>good ideas.</i></h1><p className="muted">Your brand's visual workspace.</p><form onSubmit={authenticate} className="loginForm"><label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@acaicarioca.com"/></label><label>Password<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label><button className="primary" disabled={busy}>{busy?"Please wait…":authMode==="login"?"Sign in":"Create account"}</button></form><button className="textButton" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?"New to the studio? Create an account":"Already have an account? Sign in"}</button>{notice&&<p className="notice">{notice}</p>}<p className="muted legalLink"><a href="/privacy">Privacy Policy</a></p></div></main>;
+  if(!session)return <main className="loginShell"><div className="loginCard"><p className="eyebrow">AÇAÍ CARIOCA · CONTENT ATELIER</p><h1>Make room for<br/><i>good ideas.</i></h1><p className="muted">Your brand's visual workspace.</p><form onSubmit={authenticate} className="loginForm"><label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@acaicarioca.com"/></label><label>Password<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label><button className="primary" disabled={busy}>{busy?"Please wait…":authMode==="login"?"Sign in":"Create account"}</button></form><div className="orDivider"><span>or</span></div><button type="button" className="googleButton" onClick={signInWithGoogle} disabled={busy}>Continue with Google</button><button className="textButton" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?"New to the studio? Create an account":"Already have an account? Sign in"}</button>{notice&&<p className="notice">{notice}</p>}<p className="muted legalLink"><a href="/privacy">Privacy Policy</a></p></div></main>;
 
   return <main className="appShell">
     <aside className="sidebar"><div className="brand"><span className="brandMark">AC</span><div><b>açaí carioca.</b><small>CONTENT ATELIER</small></div></div>
