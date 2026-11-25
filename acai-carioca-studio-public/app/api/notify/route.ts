@@ -27,11 +27,12 @@ export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
 
-  let body: { kind?: string; postIds?: string[]; periodStart?: string; periodEnd?: string };
+  let body: { kind?: string; postIds?: string[]; emailIds?: string[]; periodStart?: string; periodEnd?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }
   const kind = body.kind;
   const ids = Array.isArray(body.postIds) ? body.postIds.filter(i => typeof i === "string").slice(0, 100) : [];
-  if ((kind !== "submitted" && kind !== "reviewed") || ids.length === 0)
+  const emailIds = Array.isArray(body.emailIds) ? body.emailIds.filter(i => typeof i === "string").slice(0, 100) : [];
+  if ((kind !== "submitted" && kind !== "reviewed") || (ids.length === 0 && emailIds.length === 0))
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
 
   // Act as the signed-in person: database rules decide what they can see and who gets the email.
@@ -45,11 +46,22 @@ export async function POST(req: Request) {
   if (to.length === 0)
     return NextResponse.json({ error: kind === "submitted" ? "There is no approver on the team yet. Add one in the Team tab." : "No one to notify." }, { status: 400 });
 
-  const { data: postsData, error: postsError } = await supabase
-    .from("posts").select("id,title,publish_date,format,status,approval_note").in("id", ids)
-    .order("publish_date", { ascending: true });
-  if (postsError) return NextResponse.json({ error: postsError.message }, { status: 400 });
-  const posts = (postsData || []) as Post[];
+  let posts: Post[] = [];
+  if (ids.length) {
+    const { data: postsData, error: postsError } = await supabase
+      .from("posts").select("id,title,publish_date,format,status,approval_note").in("id", ids)
+      .order("publish_date", { ascending: true });
+    if (postsError) return NextResponse.json({ error: postsError.message }, { status: 400 });
+    posts = (postsData || []) as Post[];
+  }
+  if (emailIds.length) {
+    const { data: emailData, error: emailError } = await supabase
+      .from("email_campaigns").select("id,title,subject,send_date,status,approval_note").in("id", emailIds);
+    if (emailError) return NextResponse.json({ error: emailError.message }, { status: 400 });
+    posts = posts.concat(((emailData || []) as { id: string; title: string; subject: string | null; send_date: string | null; status: string; approval_note: string | null }[])
+      .map(e => ({ id: e.id, title: e.subject || e.title, publish_date: e.send_date, format: "Email", status: e.status, approval_note: e.approval_note })));
+    posts.sort((a, b) => (a.publish_date || "").localeCompare(b.publish_date || ""));
+  }
   if (posts.length === 0) return NextResponse.json({ error: "Posts not found." }, { status: 404 });
 
   // Always link to the official site (preview links are protected by Vercel login).
@@ -65,8 +77,8 @@ export async function POST(req: Request) {
   let subject: string, intro: string, button: string;
   if (kind === "submitted") {
     const period = body.periodStart && body.periodEnd ? `${day(body.periodStart)} – ${day(body.periodEnd)}` : "the next two weeks";
-    subject = `${posts.length} post${posts.length === 1 ? "" : "s"} ready for your approval (${period})`;
-    intro = `${esc(sender)} sent <b>${posts.length} post${posts.length === 1 ? "" : "s"}</b> for ${esc(period)} for your approval.`;
+    subject = `${posts.length} item${posts.length === 1 ? "" : "s"} ready for your approval (${period})`;
+    intro = `${esc(sender)} sent <b>${posts.length} item${posts.length === 1 ? "" : "s"}</b> for ${esc(period)} for your approval.`;
     button = "Review in the studio";
   } else {
     const approved = posts.filter(p => p.status === "Approved").length;

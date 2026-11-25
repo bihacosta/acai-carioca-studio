@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { Mail } from "lucide-react";
 import { thumbOf, framing, type FeedPost } from "./FeedGrid";
 
 type CalPost = FeedPost & { status: string };
@@ -27,8 +28,10 @@ function Day({ date, day, today, children }: { date: string; day: number; today:
   return <div ref={setNodeRef} className={"day" + (isOver ? " dropTarget" : "") + (today ? " today" : "")}><b>{day}</b>{children}</div>;
 }
 
-export default function CalendarBoard({ month, posts, tasks, canEdit, onOpen, onMove, onTaskClick }: {
-  month: string; posts: CalPost[]; tasks: CalTask[]; canEdit: boolean;
+type CalEmail = { id: string; title: string; subject: string | null; send_date: string | null; status: string };
+
+export default function CalendarBoard({ month, posts, tasks, emails = [], canEdit, onOpen, onMove, onTaskClick, onEmailClick }: {
+  month: string; posts: CalPost[]; tasks: CalTask[]; emails?: CalEmail[]; canEdit: boolean; onEmailClick?: () => void;
   onOpen: (p: CalPost) => void; onMove: (postId: string, date: string) => void; onTaskClick: () => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -63,6 +66,8 @@ export default function CalendarBoard({ month, posts, tasks, canEdit, onOpen, on
             const date = `${month}-${String(i + 1).padStart(2, "0")}`;
             return <Day key={date} date={date} day={i + 1} today={date === todayISO}>
               {posts.filter(p => p.publish_date === date).map(p => <DayPost key={p.id} post={p} canEdit={canEdit} onOpen={() => onOpen(p)} />)}
+              {emails.filter(m => m.send_date === date).map(m => <button key={m.id} type="button" className={"dayEmail" + (m.status === "Sent" ? " done" : "")} onClick={onEmailClick} title={`Email: ${m.subject || m.title} · ${m.status}`}>
+                <span><Mail size={10} /> {m.subject || m.title}</span><small>Email · {m.status}</small></button>)}
               {tasks.filter(t => t.due_date === date).map(t => <button key={t.id} type="button" className={"dayTask" + (t.status === "Done" ? " done" : "")} onClick={onTaskClick} title={`Task: ${t.title} · ${t.status}`}>
                 <span>{t.title}</span><small>Task · {t.status}</small></button>)}
             </Day>;
