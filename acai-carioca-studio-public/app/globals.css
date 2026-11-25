@@ -225,3 +225,9 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 @keyframes lift{from{transform:scale(1) rotate(0);border-radius:0}to{transform:scale(1.06) rotate(-1.5deg);border-radius:12px}}
 @media(prefers-reduced-motion:reduce){.liftedTile{animation:none;transform:scale(1.03)}}
 @media(max-width:760px){.feedGrid{max-width:none;margin:0 -16px}}
+/* Tab-change animation leaves no transform behind (keeps fixed/overlay elements in place) */
+.viewFade{animation-fill-mode:backwards}
+/* Gentler lift: grows in place, barely tilts */
+@keyframes lift{from{transform:scale(1) rotate(0);border-radius:0;box-shadow:0 0 0 rgba(33,21,27,0)}to{transform:scale(1.05) rotate(-.6deg);border-radius:12px;box-shadow:0 18px 40px rgba(33,21,27,.28),0 4px 12px rgba(33,21,27,.16)}}
+.liftedTile{transform-origin:center;animation:lift .28s var(--spring) forwards}
+.feedTile.liftedTile .tileOverlay{opacity:0!important}

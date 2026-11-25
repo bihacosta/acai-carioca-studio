@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor, closestCenter,
   useSensor, useSensors, type DragEndEvent, type DragStartEvent, type DropAnimation, defaultDropAnimationSideEffects
@@ -48,6 +49,8 @@ export default function FeedGrid({ posts, disabled, onOpen, onReorder }: {
   posts: FeedPost[]; disabled: boolean; onOpen: (p: FeedPost) => void; onReorder: (ordered: FeedPost[]) => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const sensors = useSensors(
     // Mouse: start dragging after moving 6px, so a simple click still opens the post.
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -77,9 +80,13 @@ export default function FeedGrid({ posts, disabled, onOpen, onReorder }: {
           {posts.map(p => <SortableTile key={p.id} post={p} disabled={disabled} onOpen={() => onOpen(p)} />)}
         </div>
       </SortableContext>
-      <DragOverlay dropAnimation={dropAnimation}>
-        {active ? <article className="feedTile liftedTile"><TileContent post={active} /></article> : null}
-      </DragOverlay>
+      {/* Rendered at page level so the lifted photo stays exactly under your finger. */}
+      {mounted && createPortal(
+        <DragOverlay dropAnimation={dropAnimation} zIndex={60}>
+          {active ? <article className="feedTile liftedTile"><TileContent post={active} /></article> : null}
+        </DragOverlay>,
+        document.body
+      )}
     </DndContext>
   );
 }
