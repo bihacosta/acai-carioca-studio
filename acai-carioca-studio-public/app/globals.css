@@ -854,3 +854,35 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .inviteForm input:focus{outline:none;border-color:var(--wine2);box-shadow:0 0 0 3px var(--tint)}
 .inviteForm select{border:1px solid var(--hair2);border-radius:var(--r-sm);background:var(--surface);padding:10px 12px;font:500 14px var(--ui);color:var(--ink)}
 .inviteList{margin-bottom:6px}
+/* Calendar on phones: compact days with markers + the tapped day's list below */
+.dayMarks,.dayAgenda{display:none}
+@media(max-width:760px){
+  .calendar .weekdays span{font-size:13px}
+  .calendar .day{min-height:66px;padding:6px 3px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+  .calendar .day>b{font-size:16px;padding:3px 6px 4px;border-radius:999px}
+  .calendar .day.selected:not(.today)>b{background:var(--tint2);color:var(--wine)}
+  .calendar .day.selected{background:var(--surface2)}
+  .calendar .dayPost,.calendar .dayEmail,.calendar .dayTask{display:none}
+  .dayMarks{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:3px;max-width:100%}
+  .dayMarks small{font:600 10px var(--ui);color:var(--muted)}
+  .markThumb{width:16px;height:16px;border-radius:4px;object-fit:cover;box-shadow:0 0 0 1.5px var(--surface)}
+  .markThumb.awaiting{box-shadow:0 0 0 1.5px #c9973a}.markThumb.changes{box-shadow:0 0 0 1.5px #b5543f}.markThumb.approved{box-shadow:0 0 0 1.5px var(--green)}
+  .markDot{width:7px;height:7px;border-radius:50%;background:var(--wine2)}
+  .markDot.post{background:var(--sand);box-shadow:inset 0 0 0 1.5px var(--wine2)}
+  .markDot.email{background:var(--green)}
+  .markDot.task{background:var(--wine)}
+  .markDot.done{opacity:.4}
+  .dayAgenda{display:block;margin-top:18px}
+  .dayAgenda h3{font:400 22px var(--display);color:var(--wine);margin:0 0 10px}
+  .dayAgenda ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .agendaEmpty{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;background:var(--surface);border-radius:var(--r-md);padding:14px 16px;margin:0}
+  .agendaItem{width:100%;display:flex;align-items:center;gap:12px;border:0;background:var(--surface);border-radius:var(--r-md);box-shadow:var(--shadow-1);padding:10px 12px;text-align:left;color:var(--ink)}
+  .agendaItem:active{transform:scale(.98)}
+  .agendaItem img,.agendaIcon{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--sand);display:grid;place-items:center;color:var(--wine)}
+  .agendaItem.awaitingPost{box-shadow:inset 3px 0 0 #c9973a,var(--shadow-1)}.agendaItem.changesPost{box-shadow:inset 3px 0 0 #b5543f,var(--shadow-1)}.agendaItem.approvedPost{box-shadow:inset 3px 0 0 var(--green),var(--shadow-1)}
+  .agendaEmail .agendaIcon{background:#eef2e7;color:#3f5a22}
+  .agendaText{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .agendaText b{font:400 16px/1.25 var(--display);color:var(--wine);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .agendaText small{font-size:12px;color:var(--muted)}
+  .agendaItem.done b{text-decoration:line-through;color:#998b86}.agendaItem.done{opacity:.8}
+}
