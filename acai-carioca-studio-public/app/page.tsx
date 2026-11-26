@@ -611,12 +611,12 @@ export default function Home() {
       <button className={view==="feed"?"nav active":"nav"} onClick={()=>setView("feed")}><LayoutGrid size={17}/> <span className="navFull">Feed planner</span><span className="navShort">Feed</span></button>
       <button className={view==="calendar"?"nav active":"nav"} onClick={()=>setView("calendar")}><CalendarDays size={17}/> Calendar</button>
       <button className={(view==="library"?"nav active":"nav")+" tabMore"} onClick={()=>setView("library")}><Images size={17}/> <span className="navFull">Creative library</span><span className="navShort">Library</span></button>
-      <button className={(view==="brand"?"nav active":"nav")+" tabMore"} onClick={()=>setView("brand")}><BookMarked size={17}/> Brand kit</button>
       <button className={view==="approvals"?"nav active":"nav"} onClick={()=>setView("approvals")}><BadgeCheck size={17}/> Approvals{allAwaiting>0&&<span className="navBadge">{allAwaiting}</span>}</button>
       {canManage&&<button className={(view==="team"?"nav active":"nav")+" tabMore"} onClick={()=>{setView("team");loadTeam();}}><Users size={17}/> Team{pendingPeople.length>0&&<span className="navBadge">{pendingPeople.length}</span>}</button>}
       {!isApprover&&<button className={view==="todo"?"nav active":"nav"} onClick={()=>setView("todo")}><ListChecks size={17}/> To-do</button>}
       <button className={(view==="email"?"nav active":"nav")+" tabMore"} onClick={()=>setView("email")}><Mail size={17}/> Email</button>
       {!isApprover&&<button className={(view==="bio"?"nav active":"nav")+" tabMore"} onClick={()=>setView("bio")}><Link2 size={17}/> Link in bio</button>}
+      <button className={(view==="brand"?"nav active":"nav")+" tabMore"} onClick={()=>setView("brand")}><BookMarked size={17}/> Brand kit</button>
       <button className={"nav moreTab"+(["library","brand","team","bio","email"].includes(view)?" active":"")} onClick={()=>setMoreOpen(true)}><MoreHorizontal size={17}/> More{canManage&&pendingPeople.length>0&&<span className="navBadge">{pendingPeople.length}</span>}</button>
       <div className="sidebarBottom"><p className="eyebrow">Your team</p><div className="userLine"><span className="avatar">{session.user.email?.[0]?.toUpperCase()}</span><span>{session.user.email}</span></div><button className="nav signOutNav" onClick={()=>supabase?.auth.signOut()} ><LogOut size={16}/> Sign out</button></div>
     </aside>
@@ -724,9 +724,9 @@ export default function Home() {
         {isPlatformOwner&&<button className="moreItem" onClick={()=>{setMoreOpen(false);createClient();}}><Plus size={18}/> New client</button>}</div>}
       <button className="moreItem" onClick={()=>{setView("email");setMoreOpen(false);}}><Mail size={18}/> Email</button>
       <button className="moreItem" onClick={()=>{setView("library");setMoreOpen(false);}}><Images size={18}/> Creative library</button>
-      <button className="moreItem" onClick={()=>{setView("brand");setMoreOpen(false);}}><BookMarked size={18}/> Brand kit</button>
       {canManage&&<button className="moreItem" onClick={()=>{setView("team");loadTeam();setMoreOpen(false);}}><Users size={18}/> Team{pendingPeople.length>0&&<span className="navBadge">{pendingPeople.length}</span>}</button>}
       {!isApprover&&<button className="moreItem" onClick={()=>{setView("bio");setMoreOpen(false);}}><Link2 size={18}/> Link in bio</button>}
+      <button className="moreItem" onClick={()=>{setView("brand");setMoreOpen(false);}}><BookMarked size={18}/> Brand kit</button>
       <button className="moreItem danger" onClick={()=>supabase?.auth.signOut()}><LogOut size={18}/> Sign out</button>
       <button className="secondary" onClick={()=>setMoreOpen(false)}>Close</button>
     </div></div>}
