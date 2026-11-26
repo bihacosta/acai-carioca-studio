@@ -18,8 +18,8 @@ export async function POST(req: Request) {
     const { token, expiresAt } = await exchangeCode(body.code);
     const me = await getProfile(token);
     const fields = {
-      ig_user_id: String(me.user_id || me.id), username: me.username || null, account_type: me.account_type || null,
-      profile_picture_url: me.profile_picture_url || null, token_enc: encrypt(token, secret), token_expires_at: expiresAt.toISOString(), last_error: null
+      ig_user_id: String(me.id), username: me.username || null, account_type: me.account_type || null,
+      profile_picture_url: me.profile_picture_url || null, token_enc: encrypt(token, secret), token_expires_at: expiresAt ? expiresAt.toISOString() : null, last_error: null
     };
     const { data: updated, error: upErr } = await supabase.from("instagram_connections").update(fields).eq("workspace_id", st.w).select("workspace_id");
     if (upErr) throw new HttpError(403, upErr.message);
