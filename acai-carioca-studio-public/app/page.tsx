@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { uploadImage } from "@/lib/media";
 import FeedGrid, { type FeedPost } from "./FeedGrid";
 import PostEditor, { type Snippet } from "./PostEditor";
 import CalendarBoard from "./CalendarBoard";
 import StoriesView from "./StoriesView";
 import LinkInBioEditor from "./LinkInBioEditor";
 import TaskBoard from "./TaskBoard";
+import ClientStudio, { type ClientProfile } from "./ClientStudio";
 import EmailPlanner, { type EmailCampaign, seriesLabel } from "./EmailPlanner";
 import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail, Link2, MoreHorizontal, Palette, Smartphone, Film, ChevronDown, Play } from "lucide-react";
 
@@ -62,6 +64,8 @@ export default function Home() {
   const [clients,setClients] = useState<Client[]>([]);
   const [clientMenu,setClientMenu] = useState(false);
   const [picking,setPicking] = useState(false);
+  const [clientProfiles,setClientProfiles] = useState<Record<string,ClientProfile>>({});
+  const [studio,setStudio] = useState<{client:Client|null}|null>(null);
   const openClientRef = useRef<string|null>(null);
   const [selected,setSelected] = useState<string[]>([]);
   const [bulkStatus,setBulkStatus] = useState("Published");
@@ -148,6 +152,7 @@ export default function Home() {
 
     const list:Client[]=(memberships||[]).map((m:any)=>({id:m.workspace_id,role:m.role,name:m.workspaces?.name||"Client",logo_url:m.workspaces?.logo_url||null,voice_rules:m.workspaces?.voice_rules||[],locations:m.workspaces?.locations||[]})).sort((a,b)=>a.name.localeCompare(b.name));
     setClients(list);
+    loadClientProfiles(list.map(c=>c.id));
     // With several clients, start on the "choose a client" page (unless one is already open, e.g. after a session refresh).
     const wanted=preferredClient||openClientRef.current;
     if(!wanted&&list.length>1){
@@ -232,16 +237,21 @@ export default function Home() {
     setView("feed");setFeedMode("grid");
     await loadPosts(session.user.id,id);
   }
-  async function createClient(){
-    if(!supabase)return;
-    const name=prompt("Client name (e.g. the brand’s name)");
-    if(!name?.trim())return;
-    setBusy(true);
-    const {data,error}=await supabase.rpc("create_workspace",{client_name:name.trim()});
-    setBusy(false);
-    if(error){setNotice(error.message);return;}
-    setNotice(`“${name.trim()}” is ready. Add its first post or invite its team.`);
-    await switchClient(String(data));
+  function createClient(){setClientMenu(false);setMoreOpen(false);setStudio({client:null});}
+  async function loadClientProfiles(ids:string[]){
+    if(!supabase||ids.length===0)return;
+    const {data}=await supabase.from("client_profiles").select("*").in("workspace_id",ids);
+    setClientProfiles(Object.fromEntries((data||[]).map((r:any)=>[r.workspace_id,r as ClientProfile])));
+  }
+  async function studioSaved(id:string,isNew:boolean){
+    setStudio(null);
+    if(!session)return;
+    if(isNew){setNotice("Client created. Add its first post or invite its team.");await switchClient(id);return;}
+    setNotice("Client details saved.");
+    const {data}=await supabase!.from("workspaces").select("id,name,logo_url").eq("id",id).single();
+    if(data)setClients(cur=>cur.map(c=>c.id===id?{...c,name:data.name,logo_url:data.logo_url}:c));
+    if(id===workspaceId&&data)setProfile(p=>({...p,title:p.title||data.name,avatar_url:p.avatar_url||data.logo_url}));
+    loadClientProfiles(clients.map(c=>c.id));
   }
   async function loadEmails(ws?:string){
     if(!supabase)return;
@@ -494,6 +504,7 @@ export default function Home() {
   const reviewEnd=addDays(reviewStart,13);
   const inWindow=posts.filter(p=>p.publish_date&&p.publish_date>=reviewStart&&p.publish_date<=reviewEnd).sort((a,b)=>(a.publish_date||"").localeCompare(b.publish_date||""));
   const awaiting=inWindow.filter(p=>p.status==="Awaiting approval");
+  const plural=(n:number,w:string)=>`${n} ${w}${n===1?"":"s"}`;
   const reviewed=inWindow.filter(p=>p.status!=="Awaiting approval");
   const awaitingEmails=emails.filter(e=>e.status==="Awaiting approval"&&e.send_date&&e.send_date>=reviewStart&&e.send_date<=reviewEnd).sort((a,b)=>(a.send_date||"").localeCompare(b.send_date||""));
   const allAwaiting=posts.filter(p=>p.status==="Awaiting approval").length+emails.filter(e=>e.status==="Awaiting approval").length;
@@ -510,24 +521,42 @@ export default function Home() {
 
   if(noAccess)return <main className="loginShell"><div className="loginCard"><p className="eyebrow">Content Atelier</p><h1>Almost<br/><i>there.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Your access request was sent to the workspace owner. Once it's approved, refresh this page to open the studio.</p><div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="primary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
 
+  const weekEnd=new Date();weekEnd.setDate(weekEnd.getDate()+7);
+  const todayIso=new Date().toISOString().slice(0,10),weekIso=weekEnd.toISOString().slice(0,10);
+  const pageContext=view==="feed"?(feedMode==="stories"?(n=>`${n} ${n===1?"story":"stories"}`)(posts.filter(p=>p.format==="Story").length):`${gridPosts.length} on the grid · ${plural(drafts.length,"draft")}`)
+    :view==="calendar"?`${plural(posts.filter(p=>p.publish_date&&p.publish_date>=todayIso&&p.publish_date<=weekIso).length,"post")} in the next 7 days`
+    :view==="library"?plural(posts.length,"piece")+" of content"
+    :view==="approvals"?(awaiting.length?`${awaiting.length} waiting for review`:"Nothing waiting for review")
+    :view==="todo"?`${plural(tasks.filter(t=>t.status!=="Done").length,"open task")}`
+    :view==="email"?`${plural(emails.filter(e=>e.status!=="Sent").length,"email")} planned`
+    :view==="team"?plural(members.length,"member"):"";
+  const studioView=studio&&session?<ClientStudio client={studio.client} profile={studio.client?clientProfiles[studio.client.id]||null:null} userId={session.user.id} onClose={()=>setStudio(null)} onSaved={studioSaved}/>:null;
   if(picking){
     let last:string|null=null;try{last=localStorage.getItem(CLIENT_KEY);}catch{}
     const hour=new Date().getHours();
     const greeting=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
+    const roleName=(r:string)=>r==="owner"?"Owner":r==="approver"?"Approver":r==="admin"?"Admin":r==="viewer"?"Viewer":"Editor";
     return <main className="pickerShell">
       <header className="pickerTop"><div className="brand"><span className="brandMark"><img src="/brand/atelier.png" alt=""/></span><div><b>content atelier.</b><small>CONTENT PLANNING</small></div></div><button className="textButton" onClick={()=>supabase?.auth.signOut()}><LogOut size={15}/> Sign out</button></header>
       <section className="pickerBody">
-        <p className="muted pickerHello">{greeting}{session.user.email?`, ${session.user.email.split("@")[0]}`:""}</p>
-        <h1>Who are we working on today?</h1>
+        <p className="pickerHello">{greeting}.</p>
+        <h1>Today in <i>the atelier.</i></h1>
+        <p className="muted pickerLead">Choose a client to open their feed, calendar and approvals.</p>
         <div className="pickerGrid">
-          {clients.map(c=><button key={c.id} className="pickerCard" onClick={()=>switchClient(c.id)} disabled={loading}>
-            <span className="pickerLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span>
-            <span className="pickerName">{c.name}</span>
-            <small>{c.role==="owner"?"Owner":c.role==="approver"?"Approver":c.role==="admin"?"Admin":c.role==="viewer"?"Viewer":"Editor"}{c.id===last?" · last opened":""}</small>
-          </button>)}
-          {isPlatformOwner&&<button className="pickerCard newPicker" onClick={createClient} disabled={busy}><span className="pickerLogo"><Plus size={22}/></span><span className="pickerName">New client</span><small>Start a new workspace</small></button>}
+          {clients.map((c,idx)=>{const prof=clientProfiles[c.id];const lead=prof?.brand_colors?.[0]||"#4c1e2f";const manage=c.role==="owner"||c.role==="admin";return <article key={c.id} className="swatchCard" style={{animationDelay:`${idx*60}ms`}}>
+            <button className="swatchOpen" onClick={()=>switchClient(c.id)} disabled={loading} aria-label={`Open ${c.name}`}>
+              <span className="swatchBand" style={{background:lead}}/>
+              <span className="swatchLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span>
+              <span className="swatchName">{c.name}</span>
+              {(prof?.tagline||c.id===last)&&<span className="swatchTag">{prof?.tagline||"Where you left off"}</span>}
+              <span className="swatchFoot"><span className="swatchDots">{(prof?.brand_colors||[]).slice(0,6).map((col,k)=><i key={k} style={{background:col}}/>)}</span><small>{roleName(c.role)}</small></span>
+            </button>
+            {manage&&<button className="swatchEdit" onClick={()=>setStudio({client:c})}>Client details</button>}
+          </article>;})}
+          {isPlatformOwner&&<button className="swatchCard swatchNew" onClick={createClient}><span className="swatchNewMark"><Plus size={22}/></span><span className="swatchName">New client</span><span className="swatchTag">Logo, colours, socials and logins</span></button>}
         </div>
       </section>
+      {studioView}
       {notice&&<div className="noticeBar" role="status" onClick={()=>setNotice("")}>{notice}<X size={14}/></div>}
     </main>;
   }
@@ -538,6 +567,7 @@ export default function Home() {
         <button className="clientButton" onClick={()=>setClientMenu(v=>!v)} aria-expanded={clientMenu} aria-label="Switch client"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="clientName"><small>Client</small>{currentClient?.name||"Choose a client"}</span><ChevronDown size={15}/></button>
         {clientMenu&&<div className="clientMenu" role="menu">
           {clients.map(c=><button key={c.id} role="menuitem" className={"clientItem"+(c.id===workspaceId?" on":"")} onClick={()=>switchClient(c.id)}><span className="clientLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span><span>{c.name}<small>{c.role}</small></span>{c.id===workspaceId&&<Check size={14}/>}</button>)}
+          {currentClient&&(currentClient.role==="owner"||currentClient.role==="admin")&&<button className="clientItem newClient" onClick={()=>{setClientMenu(false);setStudio({client:currentClient});}}><span className="clientLogo"><Palette size={15}/></span><span>Client details</span></button>}
           {clients.length>1&&<button className="clientItem newClient" onClick={showClientPicker}><span className="clientLogo"><LayoutGrid size={15}/></span><span>All clients</span></button>}
           {isPlatformOwner&&<button className="clientItem newClient" onClick={()=>{setClientMenu(false);createClient();}}><span className="clientLogo"><Plus size={15}/></span><span>New client</span></button>}
         </div>}
@@ -555,9 +585,9 @@ export default function Home() {
       <div className="sidebarBottom"><p className="eyebrow">Your team</p><div className="userLine"><span className="avatar">{session.user.email?.[0]?.toUpperCase()}</span><span>{session.user.email}</span></div><button className="nav signOutNav" onClick={()=>supabase?.auth.signOut()} ><LogOut size={16}/> Sign out</button></div>
     </aside>
     <section className="mainArea">
-      <header className="topbar"><div className="topbarText"><p className="eyebrow">Content Atelier</p><span className="topTitle">{currentClient?.name||"Your clients"}</span></div><div className="topActions">{!isApprover&&view!=="team"&&view!=="bio"&&view!=="email"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}<button className="iconButton phoneOnly roundIcon" aria-label="Sign out" onClick={()=>supabase?.auth.signOut()}><LogOut size={16}/></button></div></header>
+      <header className="topbar"><div className="topbarText"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="topTitle">{currentClient?.name||"Your clients"}</span></div><div className="topActions">{!isApprover&&view!=="team"&&view!=="bio"&&view!=="email"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}<button className="iconButton phoneOnly roundIcon" aria-label="Sign out" onClick={()=>supabase?.auth.signOut()}><LogOut size={16}/></button></div></header>
       <div className="content viewFade" key={view}>
-        <div className="welcome"><div><p className="eyebrow">Your brand, visually curated</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":view==="bio"?"Link in bio":view==="email"?"Email marketing":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Review two weeks of content at a time.":view==="team"?"Decide who can see and work on your calendar.":view==="bio"?"One page for your Instagram bio: menu, locations, ordering.":view==="email"?"Plan every send, keep the voice on brand, and track what works.":"Small steps, beautifully organized."}</p></div>{view==="bio"?null:view==="email"?<div className="stats"><div><b>{emails.filter(e=>e.status!=="Sent").length}</b><small>planned</small></div><div><b>{emails.filter(e=>e.status==="Awaiting approval").length}</b><small>awaiting</small></div><div><b>{emails.filter(e=>e.status==="Sent").length}</b><small>sent</small></div></div>:view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length}</b><small>AWAITING</small></div><div><b>{inWindow.filter(p=>p.status==="Approved").length}</b><small>APPROVED</small></div><div><b>{inWindow.filter(p=>p.status==="Changes requested").length}</b><small>CHANGES</small></div></div>:<div className="stats"><div><b>{view==="todo"?tasks.length:posts.length}</b><small>{view==="todo"?"TASKS":"CONTENT"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status!=="Done").length:count("In production")}</b><small>{view==="todo"?"OPEN":"IN PROGRESS"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status==="Done").length:count("Scheduled")}</b><small>{view==="todo"?"COMPLETED":"SCHEDULED"}</small></div></div>}</div>
+        <div className="welcome"><div><p className="pageContext"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><b>{currentClient?.name}</b>{pageContext&&<span>{pageContext}</span>}</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":view==="bio"?"Link in bio":view==="email"?"Email marketing":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Review two weeks of content at a time.":view==="team"?"Decide who can see and work on your calendar.":view==="bio"?"One page for your Instagram bio: menu, locations, ordering.":view==="email"?"Plan every send, keep the voice on brand, and track what works.":"Small steps, beautifully organized."}</p></div><div className="welcomeSide"><span className="deskOnly">{!isApprover&&view!=="team"&&view!=="bio"&&view!=="email"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</span>{view==="bio"?null:view==="email"?<div className="stats"><div><b>{emails.filter(e=>e.status!=="Sent").length}</b><small>planned</small></div><div><b>{emails.filter(e=>e.status==="Awaiting approval").length}</b><small>awaiting</small></div><div><b>{emails.filter(e=>e.status==="Sent").length}</b><small>sent</small></div></div>:view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length}</b><small>AWAITING</small></div><div><b>{inWindow.filter(p=>p.status==="Approved").length}</b><small>APPROVED</small></div><div><b>{inWindow.filter(p=>p.status==="Changes requested").length}</b><small>CHANGES</small></div></div>:<div className="stats"><div><b>{view==="todo"?tasks.length:posts.length}</b><small>{view==="todo"?"TASKS":"CONTENT"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status!=="Done").length:count("In production")}</b><small>{view==="todo"?"OPEN":"IN PROGRESS"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status==="Done").length:count("Scheduled")}</b><small>{view==="todo"?"COMPLETED":"SCHEDULED"}</small></div></div>}</div></div>
         {loading?<p className="muted">Loading your workspace…</p>:<>
           {view==="feed"&&<><div className="sectionHead feedHead"><div><p className="eyebrow">Instagram presence</p><h2>{feedMode==="stories"?"Stories":"Feed preview"}</h2></div>
             <div className="feedControls">
@@ -639,6 +669,7 @@ export default function Home() {
     {moreOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setMoreOpen(false)}}><div className="modal moreSheet">
       <div className="moreUser"><span className="avatar">{session.user.email?.[0]?.toUpperCase()}</span><span>{session.user.email}</span></div>
       {(clients.length>1||isPlatformOwner)&&<div className="moreClients"><small>Clients</small>{clients.map(c=><button key={c.id} className={"moreItem"+(c.id===workspaceId?" on":"")} onClick={()=>switchClient(c.id)}><span className="clientLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span> {c.name}{c.id===workspaceId&&<Check size={15} className="moreCheck"/>}</button>)}
+        {currentClient&&(currentClient.role==="owner"||currentClient.role==="admin")&&<button className="moreItem" onClick={()=>{setMoreOpen(false);setStudio({client:currentClient});}}><Palette size={18}/> Client details</button>}
         {clients.length>1&&<button className="moreItem" onClick={showClientPicker}><LayoutGrid size={18}/> All clients</button>}
         {isPlatformOwner&&<button className="moreItem" onClick={()=>{setMoreOpen(false);createClient();}}><Plus size={18}/> New client</button>}</div>}
       <button className="moreItem" onClick={()=>{setView("email");setMoreOpen(false);}}><Mail size={18}/> Email</button>
@@ -648,6 +679,7 @@ export default function Home() {
       <button className="moreItem danger" onClick={()=>supabase?.auth.signOut()}><LogOut size={18}/> Sign out</button>
       <button className="secondary" onClick={()=>setMoreOpen(false)}>Close</button>
     </div></div>}
+    {studioView}
     {notice&&<div className="noticeBar" role="status" onClick={()=>setNotice("")}>{notice}<X size={14}/></div>}
     </main>
 }
