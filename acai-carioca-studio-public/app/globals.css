@@ -767,3 +767,48 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .calendar .dayPost span,.calendar .dayTask>span,.calendar .dayEmail>span{font-family:var(--display);font-size:14px;line-height:1.25;letter-spacing:-.005em;font-weight:400}
 .calendar .dayTask>span,.calendar .dayEmail>span{font-weight:500}
 .calendar .dayTask small,.calendar .dayEmail small{font-family:var(--ui);font-size:11px}
+
+/* Approval queue */
+.queueHead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.queueHead h2{font:400 clamp(30px,3.6vw,40px)/1.1 var(--display);color:var(--wine);letter-spacing:-.015em;margin:0}
+.queueHead h2 i{color:var(--wine2)}
+.queueHead .muted{font-size:15px;margin:8px 0 0;max-width:56ch}
+.backLink{color:var(--wine2);font-size:14px;margin:0 0 6px}
+.queueProgress{display:flex;align-items:center;gap:12px;margin:-6px 0 22px}
+.queueBar{flex:1;max-width:360px;height:6px;border-radius:999px;background:var(--tint)}
+.queueBar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--rose),var(--wine));transition:width .6s var(--spring)}
+.queueProgress small{font-size:13px;color:var(--muted)}
+.reviewList{display:flex;flex-direction:column;gap:18px}
+.reviewCard{grid-template-columns:minmax(220px,300px) 1fr;gap:28px;padding:18px;animation:rise .5s var(--spring) both;transition:opacity .26s var(--ease),transform .26s var(--ease)}
+.reviewCard.leaving{opacity:0;transform:translateX(24px) scale(.98)}
+.reviewWhen{margin:0;font-size:14px;font-weight:600;color:var(--wine2)}
+.reviewBody h3{font-size:28px;margin:6px 0 2px}
+.reviewCaption{font-size:15px;line-height:1.6;color:var(--ink)}
+.reviewActions .primary,.reviewActions .secondary{min-height:44px;padding:10px 20px;font-size:15px}
+/* Media frame like Instagram (4:5) */
+.reviewMedia{position:relative;width:100%;aspect-ratio:4/5;border-radius:var(--r-md);overflow:hidden;background:var(--sand);touch-action:pan-y}
+.reviewMedia.reel{aspect-ratio:9/16;max-height:520px}
+.reviewTrack{display:flex;height:100%;transition:transform .45s var(--spring)}
+.reviewCard .reviewTrack img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;border-radius:0;cursor:zoom-in}
+.reviewPlay{position:absolute;inset:0;margin:auto;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:rgba(45,12,20,.55);color:#fff;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .35s var(--spring),background-color .2s}
+.reviewPlay:hover{transform:scale(1.06);background:rgba(101,19,33,.8)}
+.reviewPlay.muted{opacity:.6}
+.reviewArrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;border-radius:50%;background:rgba(255,255,255,.88);color:var(--wine);display:grid;place-items:center;box-shadow:0 2px 8px rgba(45,12,20,.18)}
+.reviewArrow.left{left:10px}.reviewArrow.right{right:10px}
+.reviewDots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:5px}
+.reviewDots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55)}
+.reviewDots span.on{background:#fff}
+.reviewCount{position:absolute;top:10px;right:10px;background:rgba(45,12,20,.6);color:#fff;font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px}
+/* All caught up */
+.caughtUp{display:flex;flex-direction:column;align-items:flex-start;gap:16px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-1);padding:28px;color:var(--green)}
+.caughtList{list-style:none;margin:0;padding:0;width:100%;max-width:560px}
+.caughtList li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair);font:400 17px var(--display);color:var(--wine)}
+@media(max-width:760px){
+  .reviewCard{grid-template-columns:1fr;gap:16px;padding:12px}
+  .reviewMedia.reel{max-height:none}
+  .reviewActions{display:grid;grid-template-columns:1fr 1fr}
+  .queueHead>.secondary{width:100%}
+}
+@media (prefers-reduced-motion:reduce){.reviewCard{animation:none;transition:none}.reviewTrack{transition:none}}
+.reviewBody>.muted{display:block}
+.reviewMedia.reel{width:auto;max-width:100%;height:min(520px,65vh);max-height:none;margin:0 auto}

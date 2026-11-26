@@ -9,6 +9,7 @@ import CalendarBoard from "./CalendarBoard";
 import StoriesView from "./StoriesView";
 import LinkInBioEditor from "./LinkInBioEditor";
 import TaskBoard from "./TaskBoard";
+import ReviewMedia from "./ReviewMedia";
 import ClientStudio, { type ClientProfile } from "./ClientStudio";
 import EmailPlanner, { type EmailCampaign, seriesLabel } from "./EmailPlanner";
 import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail, Link2, MoreHorizontal, Palette, Smartphone, Film, ChevronDown, Play } from "lucide-react";
@@ -80,6 +81,10 @@ export default function Home() {
   const [grantRole,setGrantRole] = useState<Record<string,string>>({});
   const [reviewStart,setReviewStart] = useState(nextMonday());
   const [changesFor,setChangesFor] = useState<string|null>(null);
+  const [browseDates,setBrowseDates] = useState(false);
+  const [sessionReviewed,setSessionReviewed] = useState<{id:string;title:string;decision:string}[]>([]);
+  const [leaving,setLeaving] = useState<string[]>([]);
+  const linkRef = useRef<{client:string|null;view:string|null}|null>(null);
   const [reviewNote,setReviewNote] = useState("");
   const [loading,setLoading] = useState(true);
   const [busy,setBusy] = useState(false);
@@ -131,6 +136,14 @@ export default function Home() {
     };
   },[]);
 
+  function linkTarget(){
+    if(linkRef.current===null){
+      try{const q=new URLSearchParams(window.location.search);linkRef.current={client:q.get("client"),view:q.get("view")};
+        if(q.get("client")||q.get("view"))window.history.replaceState(null,"",window.location.pathname);}
+      catch{linkRef.current={client:null,view:null};}
+    }
+    return linkRef.current;
+  }
   async function loadPosts(userId:string,preferredClient?:string){
     if(!supabase)return;
     setLoading(true);
@@ -154,7 +167,10 @@ export default function Home() {
     setClients(list);
     loadClientProfiles(list.map(c=>c.id));
     // With several clients, start on the "choose a client" page (unless one is already open, e.g. after a session refresh).
-    const wanted=preferredClient||openClientRef.current;
+    const link=linkTarget();
+    const linked=link.client&&list.some(c=>c.id===link.client)?link.client:null;
+    if(linked)link.client=null;
+    const wanted=preferredClient||openClientRef.current||linked;
     if(!wanted&&list.length>1){
       setPicking(true);setWorkspaceId(null);setLoading(false);
       return;
@@ -180,6 +196,7 @@ export default function Home() {
     setRole(membership.role);
     if(membership.role==="owner"||membership.role==="admin")loadTeam(membership.workspace_id);else setTeam([]);
     if(membership.role==="approver")setView("approvals");
+    if(link.view==="approvals"){setView("approvals");setBrowseDates(false);link.view=null;}
 
     const {data,error}=await supabase
       .from("posts")
@@ -396,14 +413,14 @@ export default function Home() {
     if(!supabase||(ids.length===0&&emailIds.length===0))return {ok:false,error:"Nothing to send."};
     const {data:{session:current}}=await supabase.auth.getSession();
     try{
-      const res=await fetch("/api/notify",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${current?.access_token||""}`},body:JSON.stringify({kind,postIds:ids,emailIds,workspaceId,periodStart:reviewStart,periodEnd:reviewEnd})});
+      const res=await fetch("/api/notify",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${current?.access_token||""}`},body:JSON.stringify({kind,postIds:ids,emailIds,workspaceId,...(browseDates?{periodStart:reviewStart,periodEnd:reviewEnd}:{})})});
       const out=await res.json().catch(()=>({}));
       return res.ok?{ok:true,sent:out.sent as number}:{ok:false,error:(out.error as string)||"Could not send the email."};
     }catch{return {ok:false,error:"Could not reach the email service."};}
   }
   async function notifyApprover(){
     const total=awaiting.length+awaitingEmails.length;
-    if(!confirm(`Email the approver about ${total} item${total===1?"":"s"} awaiting approval (${prettyDate(reviewStart)} – ${prettyDate(reviewEnd)})?`))return;
+    if(!confirm(`Email the approver about ${total} item${total===1?"":"s"} awaiting approval${periodLabel?` (${periodLabel})`:""}?`))return;
     setBusy(true);setNotice("");
     const r=await notify("submitted",awaiting.map(p=>p.id),awaitingEmails.map(e=>e.id));
     setNotice(r.ok?"The approver was notified by email.":"Email not sent: "+r.error);
@@ -417,6 +434,7 @@ export default function Home() {
     else{
       const updated=(data||[]) as Post[];
       setPosts(p=>p.map(x=>updated.find(u=>u.id===x.id)||x));
+      setSessionReviewed(cur=>[...cur,...updated.map(u=>({id:u.id,title:u.title,decision}))]);
       setChangesFor(null);setReviewNote("");
       let msg=decision==="Approved"?`${updated.length} post${updated.length===1?"":"s"} approved.`:"Changes requested. The team will see your comment.";
       if(updated.length>0){const r=await notify("reviewed",updated.map(u=>u.id));if(r.ok)msg+=" The team was notified by email.";else if(isApprover)msg+=" (Email not sent: "+r.error+")";}
@@ -424,12 +442,19 @@ export default function Home() {
     }
     setBusy(false);
   }
+  async function decide(id:string,run:()=>Promise<void>){
+    setLeaving(cur=>[...cur,id]);
+    await new Promise(r=>setTimeout(r,260));
+    await run();
+    setLeaving(cur=>cur.filter(x=>x!==id));
+  }
   async function reviewEmails(ids:string[],decision:"Approved"|"Changes requested",note=""){
     if(!supabase||ids.length===0)return [] as EmailCampaign[];
     const {data,error}=await supabase.rpc("review_emails",{email_ids:ids,decision,note:note||null});
     if(error){setNotice(error.message);return [] as EmailCampaign[];}
     const updated=(data||[]) as EmailCampaign[];
     setEmails(list=>list.map(x=>updated.find(u=>u.id===x.id)||x));
+    setSessionReviewed(cur=>[...cur,...updated.map(u=>({id:u.id,title:u.subject||u.title,decision}))]);
     return updated;
   }
   async function reviewEmail(id:string,decision:"Approved"|"Changes requested",note=""){
@@ -445,13 +470,14 @@ export default function Home() {
   }
   async function approveEverything(){
     const total=awaiting.length+awaitingEmails.length;
-    if(!confirm(`Approve all ${total} item${total===1?"":"s"} from ${prettyDate(reviewStart)} to ${prettyDate(reviewEnd)}?`))return;
+    if(!confirm(`Approve all ${total} item${total===1?"":"s"}${periodLabel?` (${periodLabel})`:""}?`))return;
     setBusy(true);setNotice("");
     let postsDone:Post[]=[];
     if(awaiting.length){
       const {data,error}=await supabase!.rpc("review_posts",{post_ids:awaiting.map(p=>p.id),decision:"Approved",note:null});
       if(error){setNotice(error.message);setBusy(false);return;}
       postsDone=(data||[]) as Post[];setPosts(p=>p.map(x=>postsDone.find(u=>u.id===x.id)||x));
+      setSessionReviewed(cur=>[...cur,...postsDone.map(u=>({id:u.id,title:u.title,decision:"Approved"}))]);
     }
     const emailsDone=await reviewEmails(awaitingEmails.map(e=>e.id),"Approved");
     const n=postsDone.length+emailsDone.length;
@@ -503,10 +529,13 @@ export default function Home() {
   const canReview=role==="owner"||role==="approver";
   const reviewEnd=addDays(reviewStart,13);
   const inWindow=posts.filter(p=>p.publish_date&&p.publish_date>=reviewStart&&p.publish_date<=reviewEnd).sort((a,b)=>(a.publish_date||"").localeCompare(b.publish_date||""));
-  const awaiting=inWindow.filter(p=>p.status==="Awaiting approval");
+  const byDate=(a:string|null|undefined,b:string|null|undefined)=>(a||"9999").localeCompare(b||"9999");
+  const awaiting=browseDates?inWindow.filter(p=>p.status==="Awaiting approval"):posts.filter(p=>p.status==="Awaiting approval").sort((a,b)=>byDate(a.publish_date,b.publish_date));
   const plural=(n:number,w:string)=>`${n} ${w}${n===1?"":"s"}`;
   const reviewed=inWindow.filter(p=>p.status!=="Awaiting approval");
-  const awaitingEmails=emails.filter(e=>e.status==="Awaiting approval"&&e.send_date&&e.send_date>=reviewStart&&e.send_date<=reviewEnd).sort((a,b)=>(a.send_date||"").localeCompare(b.send_date||""));
+  const awaitingEmails=emails.filter(e=>e.status==="Awaiting approval"&&(!browseDates||(e.send_date&&e.send_date>=reviewStart&&e.send_date<=reviewEnd))).sort((a,b)=>byDate(a.send_date,b.send_date));
+  const queueDates=[...awaiting.map(p=>p.publish_date),...awaitingEmails.map(e=>e.send_date)].filter(Boolean).sort() as string[];
+  const periodLabel=browseDates?`${prettyDate(reviewStart)} – ${prettyDate(reviewEnd)}`:queueDates.length?`${prettyDate(queueDates[0])} – ${prettyDate(queueDates[queueDates.length-1])}`:"";
   const allAwaiting=posts.filter(p=>p.status==="Awaiting approval").length+emails.filter(e=>e.status==="Awaiting approval").length;
   const filtered=useMemo(()=>posts.filter(p=>(p.title+" "+p.pillar+" "+p.location).toLowerCase().includes(search.toLowerCase())),[posts,search]);
   const count=(s:string)=>posts.filter(p=>p.status===s).length;
@@ -522,11 +551,16 @@ export default function Home() {
   if(noAccess)return <main className="loginShell"><div className="loginCard"><div className="loginBrand"><img src="/brand/atelier-mark.png" alt=""/><span className="wordmark"><b>Content <i>Atelier</i></b></span></div><h1>Almost<br/><i>there.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Your access request was sent to the workspace owner. Once it's approved, refresh this page to open the studio.</p><div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="primary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
 
   const weekEnd=new Date();weekEnd.setDate(weekEnd.getDate()+7);
-  const todayIso=new Date().toISOString().slice(0,10),weekIso=weekEnd.toISOString().slice(0,10);
+  const localIso=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const todayIso=localIso(new Date()),weekIso=localIso(weekEnd);
+  const upcoming=posts.filter(p=>p.publish_date&&p.publish_date>=todayIso&&p.status!=="Published").map(p=>p.publish_date as string).sort();
+  const nextPostLabel=(()=>{if(!upcoming.length)return "—";const d=Math.round((new Date(upcoming[0]+"T12:00:00").getTime()-new Date(todayIso+"T12:00:00").getTime())/86400000);return d===0?"Today":d===1?"Tomorrow":`${d} days`;})();
+  const weekCount=posts.filter(p=>p.publish_date&&p.publish_date>=todayIso&&p.publish_date<=weekIso).length;
+  const awaitingAll=posts.filter(p=>p.status==="Awaiting approval").length;
   const pageContext=view==="feed"?(feedMode==="stories"?(n=>`${n} ${n===1?"story":"stories"}`)(posts.filter(p=>p.format==="Story").length):`${gridPosts.length} on the grid · ${plural(drafts.length,"draft")}`)
     :view==="calendar"?`${plural(posts.filter(p=>p.publish_date&&p.publish_date>=todayIso&&p.publish_date<=weekIso).length,"post")} in the next 7 days`
     :view==="library"?plural(posts.length,"piece")+" of content"
-    :view==="approvals"?(awaiting.length?`${awaiting.length} waiting for review`:"Nothing waiting for review")
+    :view==="approvals"?(awaiting.length+awaitingEmails.length?`${awaiting.length+awaitingEmails.length} waiting for review`:"Nothing waiting for review")
     :view==="todo"?`${plural(tasks.filter(t=>t.status!=="Done").length,"open task")}`
     :view==="email"?`${plural(emails.filter(e=>e.status!=="Sent").length,"email")} planned`
     :view==="team"?plural(members.length,"member"):"";
@@ -587,9 +621,10 @@ export default function Home() {
     <section className="mainArea">
       <header className="topbar"><div className="topbarText"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="topTitle">{currentClient?.name||"Your clients"}</span></div><div className="topActions">{!isApprover&&view!=="team"&&view!=="bio"&&view!=="email"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}<button className="iconButton phoneOnly roundIcon" aria-label="Sign out" onClick={()=>supabase?.auth.signOut()}><LogOut size={16}/></button></div></header>
       <div className="content viewFade" key={view}>
-        <div className="welcome"><div><p className="pageContext"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><b>{currentClient?.name}</b>{pageContext&&<span>{pageContext}</span>}</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":view==="bio"?"Link in bio":view==="email"?"Email marketing":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Review two weeks of content at a time.":view==="team"?"Decide who can see and work on your calendar.":view==="bio"?"One page for your Instagram bio: menu, locations, ordering.":view==="email"?"Plan every send, keep the voice on brand, and track what works.":"Small steps, beautifully organized."}</p></div><div className="welcomeSide"><span className="deskOnly">{!isApprover&&view!=="team"&&view!=="bio"&&view!=="email"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</span>{view==="bio"?null:view==="email"?<div className="stats"><div><b>{emails.filter(e=>e.status!=="Sent").length}</b><small>planned</small></div><div><b>{emails.filter(e=>e.status==="Awaiting approval").length}</b><small>awaiting</small></div><div><b>{emails.filter(e=>e.status==="Sent").length}</b><small>sent</small></div></div>:view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length}</b><small>AWAITING</small></div><div><b>{inWindow.filter(p=>p.status==="Approved").length}</b><small>APPROVED</small></div><div><b>{inWindow.filter(p=>p.status==="Changes requested").length}</b><small>CHANGES</small></div></div>:<div className="stats"><div><b>{view==="todo"?tasks.length:posts.length}</b><small>{view==="todo"?"TASKS":"CONTENT"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status!=="Done").length:count("In production")}</b><small>{view==="todo"?"OPEN":"IN PROGRESS"}</small></div><div><b>{view==="todo"?tasks.filter(t=>t.status==="Done").length:count("Scheduled")}</b><small>{view==="todo"?"COMPLETED":"SCHEDULED"}</small></div></div>}</div></div>
+        <div className="welcome"><div><p className="pageContext"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><b>{currentClient?.name}</b>{pageContext&&<span>{pageContext}</span>}</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":view==="bio"?"Link in bio":view==="email"?"Email marketing":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Everything waiting for approval, in one place.":view==="team"?"Decide who can see and work on your calendar.":view==="bio"?"One page for your Instagram bio: menu, locations, ordering.":view==="email"?"Plan every send, keep the voice on brand, and track what works.":"Small steps, beautifully organized."}</p></div><div className="welcomeSide"><span className="deskOnly">{!isApprover&&view!=="team"&&view!=="bio"&&view!=="email"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</span>{view==="bio"?null:view==="email"?<div className="stats"><div><b>{emails.filter(e=>e.status!=="Sent").length}</b><small>planned</small></div><div><b>{emails.filter(e=>e.status==="Awaiting approval").length}</b><small>awaiting</small></div><div><b>{emails.filter(e=>e.status==="Sent").length}</b><small>sent</small></div></div>:view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length+awaitingEmails.length}</b><small>waiting</small></div><div><b>{sessionReviewed.filter(r=>r.decision==="Approved").length}</b><small>approved now</small></div><div><b>{sessionReviewed.filter(r=>r.decision!=="Approved").length}</b><small>changes asked</small></div></div>:view==="todo"?<div className="stats"><div><b>{tasks.length}</b><small>tasks</small></div><div><b>{tasks.filter(t=>t.status!=="Done").length}</b><small>open</small></div><div><b>{tasks.filter(t=>t.status==="Done").length}</b><small>completed</small></div></div>
+          :<div className="stats"><div><b>{nextPostLabel}</b><small>next post</small></div><div><b>{weekCount}</b><small>in the next 7 days</small></div><div><b>{awaitingAll}</b><small>awaiting approval</small></div></div>}</div></div>
         {loading?<p className="muted">Loading your workspace…</p>:<>
-          {view==="feed"&&<><div className="sectionHead feedHead"><div><p className="eyebrow">Instagram presence</p><h2>{feedMode==="stories"?"Stories":"Feed preview"}</h2></div>
+          {view==="feed"&&<><div className="sectionHead feedHead"><div><h2>{feedMode==="stories"?"Stories":"Feed preview"}</h2></div>
             <div className="feedControls">
               <div className="segmented" role="tablist" aria-label="Feed view">
                 <button role="tab" aria-selected={feedMode==="grid"} className={feedMode==="grid"?"on":""} onClick={()=>setFeedMode("grid")}><LayoutGrid size={14}/> Grid</button>
@@ -600,35 +635,47 @@ export default function Home() {
             </div></div>
             {feedMode==="stories"?<StoriesView stories={stories as any} canEdit={!isApprover} onOpen={p=>openEdit(p as Post)} onAdd={date=>openNew({format:"Story",date})}/>
             :<>{gridPosts.length===0&&drafts.length===0?<div className="empty"><Images size={28}/><h3>A blank canvas.</h3><p>Upload your first creative to begin building the grid.</p>{!isApprover&&<button className="primary" onClick={()=>openNew()}><Plus size={16}/> Add your first post</button>}</div>
-            :<><p className="muted feedHint">{gridPosts.length} on the grid{!isApprover&&drafts.length>0?` · ${drafts.length} in drafts`:""} · {isApprover?"tap a post to preview":"drag to rearrange, or drag a draft onto the grid"}</p>
+            :<><p className="muted feedHint">{isApprover?"Tap a post to preview it.":"Drag to rearrange, or drag a draft onto the grid."}</p>
             <FeedGrid fallbackLogo={currentClient?.logo_url||null} posts={gridPosts} drafts={isApprover?[]:drafts} disabled={isApprover} mode={feedMode==="phone"?"phone":"grid"} profile={profile} showColors={showColors} onOpen={p=>openEdit(p as Post)} onReorder={saveOrder} onPlaceDraft={placeDraft} onMoveToDrafts={moveToDrafts}/></>}</>}</>}
-          {view==="calendar"&&<><div className="sectionHead"><div><p className="eyebrow">Publishing rhythm</p><h2>Monthly overview</h2></div><input className="monthInput" type="month" value={month} onChange={e=>setMonth(e.target.value)}/></div>
+          {view==="calendar"&&<><div className="sectionHead"><div><h2>Monthly overview</h2></div><input className="monthInput" type="month" value={month} onChange={e=>setMonth(e.target.value)}/></div>
             {!isApprover&&<p className="muted feedHint">Drag a post to another day to change its date.</p>}
             <CalendarBoard month={month} emails={emails} onEmailClick={()=>setView("email")} posts={posts as any} tasks={isApprover?[]:tasks} canEdit={!isApprover} onOpen={p=>openEdit(p as Post)} onMove={movePostDate} onTaskClick={()=>setView("todo")}/></>}
           {view==="todo"&&<>
-            <div className="sectionHead"><div><p className="eyebrow">Team organization</p><h2>Things to get done</h2></div><button className="primary" onClick={openTask}><Plus size={16}/> Add task</button></div>
+            <div className="sectionHead"><div><h2>Things to get done</h2></div><button className="primary" onClick={openTask}><Plus size={16}/> Add task</button></div>
             <div className="todoToolbar"><div className="todoFilters">{taskLists.map(list=><button key={list} className={taskListFilter===list?"filterChip selected":"filterChip"} onClick={()=>setTaskListFilter(list)}>{list}</button>)}</div><span className="muted">Shared with your workspace team</span></div>
             {visibleTasks.length===0?<div className="empty"><ClipboardList size={28}/><h3>{tasks.length===0?"A fresh start.":"Nothing on this list yet."}</h3><p>{tasks.length===0?"Create your first checklist item and keep the team moving.":"Add a task to this checklist when you're ready."}</p><button className="primary" onClick={openTask}><Plus size={16}/> Create a task</button></div>:<TaskBoard tasks={visibleTasks} onChange={moveTasks} renderCard={task=>task.status==="Done"?<article className="taskCard completedTask" key={task.id}><button className="taskCheck checked" aria-label="Reopen task" onClick={()=>updateTask(task,{status:"To do"})}><Check size={15}/></button><div className="taskBody" role="button" tabIndex={0} title="Edit task" onClick={()=>openEditTask(task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openEditTask(task);}}}><b>{task.title}</b><div className="taskMeta"><span>{task.list_name}</span>{task.assignee&&<span>{task.assignee}</span>}</div></div><button className="taskDelete" aria-label="Delete task" onClick={()=>removeTask(task)}><Trash2 size={15}/></button></article>:<article className="taskCard" key={task.id}><button className="taskCheck" aria-label="Mark complete" onClick={()=>updateTask(task,{status:"Done"})}><Check size={15}/></button><div className="taskBody" role="button" tabIndex={0} title="Edit task" onClick={()=>openEditTask(task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openEditTask(task);}}}><b>{task.title}</b>{task.details&&<p>{task.details}</p>}<div className="taskMeta"><span>{task.list_name}</span>{task.due_date&&<span>Due {new Date(task.due_date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>}{task.assignee&&<span>{task.assignee}</span>}<span className={"priority "+task.priority.toLowerCase()}>{task.priority}</span></div></div><select aria-label="Task status" value={task.status} onChange={e=>updateTask(task,{status:e.target.value as Task["status"]})}><option>To do</option><option>In progress</option><option>Done</option></select><button className="taskDelete" aria-label="Delete task" onClick={()=>removeTask(task)}><Trash2 size={15}/></button></article>}/>}
           </>}
           {view==="approvals"&&<>
-            <div className="sectionHead"><div><p className="eyebrow">Two-week review</p><h2>{prettyDate(reviewStart)} – {prettyDate(reviewEnd)}</h2></div><div className="reviewNav"><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,-14))}><ChevronLeft size={15}/> Previous</button><input className="monthInput" type="date" value={reviewStart} onChange={e=>e.target.value&&setReviewStart(e.target.value)} aria-label="First day of the review period"/><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,14))}>Next <ChevronRight size={15}/></button></div></div>
-            {awaiting.length===0&&awaitingEmails.length===0?<div className="empty"><BadgeCheck size={28}/><h3>Nothing waiting for approval.</h3><p>{allAwaiting>0?`${allAwaiting} item${allAwaiting===1?" is":"s are"} awaiting approval in other weeks. Use Previous / Next to find ${allAwaiting===1?"it":"them"}.`:canReview?"When the team sends posts for review, they will appear here.":"Set a post's status to “Awaiting approval” to send it here for review."}</p></div>:<>
-              {!isApprover&&<div className="approveAllBar notifyBar"><span>Ready to send these two weeks for approval?</span><button className="secondary" disabled={busy} onClick={notifyApprover}><Mail size={15}/> Notify approver</button></div>}
-              {canReview&&<div className="approveAllBar"><span><b>{awaiting.length+awaitingEmails.length}</b> item{awaiting.length+awaitingEmails.length===1?"":"s"} awaiting your approval in these two weeks{awaitingEmails.length?` (${awaitingEmails.length} email${awaitingEmails.length===1?"":"s"})`:""}.</span><button className="primary" disabled={busy} onClick={approveEverything}><Check size={15}/> Approve all {awaiting.length+awaitingEmails.length}</button></div>}
-              <div className="reviewList">{awaiting.map(p=><article className="reviewCard" key={p.id}>
-                <img src={p.image_url} alt={p.title} onClick={()=>openEdit(p)}/>
+            {browseDates
+              ?<div className="sectionHead"><div><button className="textButton backLink" onClick={()=>setBrowseDates(false)}><ChevronLeft size={15}/> Back to everything waiting</button><h2>{prettyDate(reviewStart)} – {prettyDate(reviewEnd)}</h2></div><div className="reviewNav"><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,-14))}><ChevronLeft size={15}/> Previous</button><input className="monthInput" type="date" value={reviewStart} onChange={e=>e.target.value&&setReviewStart(e.target.value)} aria-label="First day of the review period"/><button className="secondary" onClick={()=>setReviewStart(addDays(reviewStart,14))}>Next <ChevronRight size={15}/></button></div></div>
+              :<div className="queueHead">
+                <div>
+                  <h2>{awaiting.length+awaitingEmails.length===0?<>All caught <i>up.</i></>:<>{plural(awaiting.length+awaitingEmails.length,"item")} <i>{canReview?"waiting for you.":"waiting for approval."}</i></>}</h2>
+                  <p className="muted">{awaiting.length+awaitingEmails.length===0?(sessionReviewed.length?"Thank you. The team has been told.":canReview?"New content will appear here as soon as the team sends it.":"Set a post's status to “Awaiting approval” to send it here."):canReview?"Look at each post, then approve it or ask for a change. Nearest dates first.":"Everything the approver still needs to see, nearest dates first."}</p>
+                </div>
+                <button className="secondary" onClick={()=>setBrowseDates(true)}><CalendarDays size={15}/> Browse by dates</button>
+              </div>}
+            {!browseDates&&sessionReviewed.length>0&&<div className="queueProgress" aria-label={`${sessionReviewed.length} of ${sessionReviewed.length+awaiting.length+awaitingEmails.length} reviewed`}><div className="queueBar"><span style={{width:`${100*sessionReviewed.length/(sessionReviewed.length+awaiting.length+awaitingEmails.length)}%`}}/></div><small>{sessionReviewed.length} of {sessionReviewed.length+awaiting.length+awaitingEmails.length} reviewed</small></div>}
+            {awaiting.length===0&&awaitingEmails.length===0?(browseDates
+              ?<div className="empty"><BadgeCheck size={28}/><h3>Nothing waiting in these two weeks.</h3><p>{allAwaiting>0?`${allAwaiting} item${allAwaiting===1?" is":"s are"} waiting on other dates.`:"Nothing is waiting for approval."}</p>{allAwaiting>0&&<button className="primary" onClick={()=>setBrowseDates(false)}>See everything waiting</button>}</div>
+              :<div className="caughtUp"><BadgeCheck size={34}/>{sessionReviewed.length>0&&<ul className="caughtList">{sessionReviewed.map(r=><li key={r.id}><span>{r.title}</span><span className={"statusPill"+(r.decision==="Approved"?" ok":" warn")}>{r.decision}</span></li>)}</ul>}<button className="secondary" onClick={()=>setView("calendar")}><CalendarDays size={15}/> See the calendar</button></div>)
+            :<>
+              {!isApprover&&<div className="approveAllBar notifyBar"><span>Ready for the approver to look?</span><button className="secondary" disabled={busy} onClick={notifyApprover}><Mail size={15}/> Notify approver</button></div>}
+              {canReview&&awaiting.length+awaitingEmails.length>1&&<div className="approveAllBar"><span>Happy with all of them?</span><button className="primary" disabled={busy} onClick={approveEverything}><Check size={15}/> Approve all {awaiting.length+awaitingEmails.length}</button></div>}
+              <div className="reviewList">{awaiting.map(p=><article className={"reviewCard"+(leaving.includes(p.id)?" leaving":"")} key={p.id}>
+                <ReviewMedia title={p.title} format={p.format} image={p.image_url} extra={p.extra_images} cover={p.cover_url} video={p.video_url} onOpen={()=>openEdit(p)}/>
                 <div className="reviewBody">
-                  <p className="eyebrow">{prettyDate(p.publish_date)} · {p.format} · {p.location}</p>
+                  <p className="reviewWhen">{p.publish_date?prettyDate(p.publish_date):"No date yet"} · {p.format}{p.location&&(currentClient?.locations?.length??0)>0?` · ${p.location}`:""}</p>
                   <h3>{p.title}</h3>
                   <span className="muted">{p.pillar}</span>
                   {p.format==="Reel"&&(p.video_url&&/^https?:\/\//i.test(p.video_url)?<a className="videoLink" href={p.video_url} target="_blank" rel="noopener noreferrer"><Play size={16}/> Watch the video<small>Opens in a new tab</small></a>:<p className="muted videoMissing">No video link yet.</p>)}
                   {p.caption?<p className="reviewCaption">{p.caption}</p>:<p className="reviewCaption muted">No caption yet.</p>}
                   {p.approval_note&&<p className="previousNote"><MessageSquare size={12}/> Previous feedback: {p.approval_note}</p>}
-                  {canReview&&(changesFor===p.id?<div className="changesForm"><textarea rows={3} autoFocus value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="What should change? (caption, image, date…)"/><div className="modalActions"><button className="secondary" onClick={()=>{setChangesFor(null);setReviewNote("");}}>Cancel</button><button className="primary" disabled={busy||!reviewNote.trim()} onClick={()=>review([p.id],"Changes requested",reviewNote)}>Send feedback</button></div></div>
-                  :<div className="reviewActions"><button className="primary" disabled={busy} onClick={()=>review([p.id],"Approved")}><Check size={15}/> Approve</button><button className="secondary" disabled={busy} onClick={()=>{setChangesFor(p.id);setReviewNote("");}}><MessageSquare size={15}/> Request changes</button></div>)}
+                  {canReview&&(changesFor===p.id?<div className="changesForm"><textarea rows={3} autoFocus value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="What should change? (caption, image, date…)"/><div className="modalActions"><button className="secondary" onClick={()=>{setChangesFor(null);setReviewNote("");}}>Cancel</button><button className="primary" disabled={busy||!reviewNote.trim()} onClick={()=>{const note=reviewNote;decide(p.id,()=>review([p.id],"Changes requested",note));}}>Send feedback</button></div></div>
+                  :<div className="reviewActions"><button className="primary" disabled={busy} onClick={()=>decide(p.id,()=>review([p.id],"Approved"))}><Check size={15}/> Approve</button><button className="secondary" disabled={busy} onClick={()=>{setChangesFor(p.id);setReviewNote("");}}><MessageSquare size={15}/> Request changes</button></div>)}
                 </div>
               </article>)}</div>
-              {awaitingEmails.length>0&&<><h4 className="groupTitle reviewEmailsTitle">Emails</h4><div className="reviewList">{awaitingEmails.map(e=><article className="reviewCard emailReview" key={e.id}>
+              {awaitingEmails.length>0&&<><h4 className="groupTitle reviewEmailsTitle">Emails</h4><div className="reviewList">{awaitingEmails.map(e=><article className={"reviewCard emailReview"+(leaving.includes(e.id)?" leaving":"")} key={e.id}>
                 <div className="emailReviewArt">{e.hero_image_url?<img src={e.hero_image_url} alt="" onClick={()=>setView("email")}/>:<Mail size={26}/>}</div>
                 <div className="reviewBody">
                   <p className="eyebrow">{prettyDate(e.send_date)} · Email · {e.audience}</p>
@@ -638,12 +685,12 @@ export default function Home() {
                   {e.body?<p className="reviewCaption emailBodyPreview">{e.body}</p>:<p className="reviewCaption muted">No copy yet.</p>}
                   {e.cta_label&&<p className="muted">Button: <b>{e.cta_label}</b></p>}
                   {e.approval_note&&<p className="previousNote"><MessageSquare size={12}/> Previous feedback: {e.approval_note}</p>}
-                  {canReview&&(changesFor===e.id?<div className="changesForm"><textarea rows={3} autoFocus value={reviewNote} onChange={ev=>setReviewNote(ev.target.value)} placeholder="What should change? (subject, copy, date…)"/><div className="modalActions"><button className="secondary" onClick={()=>{setChangesFor(null);setReviewNote("");}}>Cancel</button><button className="primary" disabled={busy||!reviewNote.trim()} onClick={()=>reviewEmail(e.id,"Changes requested",reviewNote)}>Send feedback</button></div></div>
-                  :<div className="reviewActions"><button className="primary" disabled={busy} onClick={()=>reviewEmail(e.id,"Approved")}><Check size={15}/> Approve</button><button className="secondary" disabled={busy} onClick={()=>{setChangesFor(e.id);setReviewNote("");}}><MessageSquare size={15}/> Request changes</button></div>)}
+                  {canReview&&(changesFor===e.id?<div className="changesForm"><textarea rows={3} autoFocus value={reviewNote} onChange={ev=>setReviewNote(ev.target.value)} placeholder="What should change? (subject, copy, date…)"/><div className="modalActions"><button className="secondary" onClick={()=>{setChangesFor(null);setReviewNote("");}}>Cancel</button><button className="primary" disabled={busy||!reviewNote.trim()} onClick={()=>{const note=reviewNote;decide(e.id,()=>reviewEmail(e.id,"Changes requested",note));}}>Send feedback</button></div></div>
+                  :<div className="reviewActions"><button className="primary" disabled={busy} onClick={()=>decide(e.id,()=>reviewEmail(e.id,"Approved"))}><Check size={15}/> Approve</button><button className="secondary" disabled={busy} onClick={()=>{setChangesFor(e.id);setReviewNote("");}}><MessageSquare size={15}/> Request changes</button></div>)}
                 </div>
               </article>)}</div></>}
             </>}
-            {reviewed.length>0&&<><div className="sectionHead reviewedHead"><div><p className="eyebrow">Also in these two weeks</p><h2>Other content</h2></div></div><div className="libraryList">{reviewed.map(p=><div className="libraryItem" key={p.id}><img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{prettyDate(p.publish_date)} · {p.format}{p.approval_note?" · “"+p.approval_note+"”":""}</small></div><span className={"statusPill"+(p.status==="Approved"?" ok":p.status==="Changes requested"?" warn":"")}>{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>{isApprover?"View":"Edit"}</button></div>)}</div></>}
+            {browseDates&&reviewed.length>0&&<><div className="sectionHead reviewedHead"><div><p className="eyebrow">Also in these two weeks</p><h2>Other content</h2></div></div><div className="libraryList">{reviewed.map(p=><div className="libraryItem" key={p.id}><img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{prettyDate(p.publish_date)} · {p.format}{p.approval_note?" · “"+p.approval_note+"”":""}</small></div><span className={"statusPill"+(p.status==="Approved"?" ok":p.status==="Changes requested"?" warn":"")}>{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>{isApprover?"View":"Edit"}</button></div>)}</div></>}
           </>}
           {view==="team"&&canManage&&<>
             <div className="sectionHead"><div><p className="eyebrow">Waiting for you</p><h2>Access requests</h2></div><span className="muted">People who signed in and asked to join</span></div>
@@ -655,7 +702,7 @@ export default function Home() {
           </>}
           {view==="email"&&workspaceId&&<EmailPlanner clientName={currentClient?.name||"Your brand"} clientLogo={currentClient?.logo_url||null} voiceRules={currentClient?.voice_rules||[]} emails={emails} workspaceId={workspaceId} userId={session.user.id} canEdit={!isApprover} canDelete={canManage} onChanged={msg=>{loadEmails();setNotice(msg);}} onOpenApprovals={()=>setView("approvals")}/>}
           {view==="bio"&&!isApprover&&workspaceId&&<LinkInBioEditor clientName={currentClient?.name||""} clientLogo={currentClient?.logo_url||null} workspaceId={workspaceId} userId={session.user.id} onNotice={setNotice} onProfileChange={()=>loadProfile(workspaceId)}/>}
-          {view==="library"&&<><div className="sectionHead"><div><p className="eyebrow">Creative archive</p><h2>All your content</h2></div><div className="search"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search content"/></div></div>
+          {view==="library"&&<><div className="sectionHead"><div><h2>All your content</h2></div><div className="search"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search content"/></div></div>
             {!isApprover&&filtered.length>0&&<div className={"bulkBar"+(selected.length?" active":"")}>
               <label className="checkLabel"><input type="checkbox" checked={filtered.length>0&&filtered.every(p=>selected.includes(p.id))} ref={el=>{if(el)el.indeterminate=selected.length>0&&!filtered.every(p=>selected.includes(p.id));}} onChange={e=>setSelected(e.target.checked?filtered.map(p=>p.id):[])}/> {selected.length?`${selected.length} selected`:"Select all"}</label>
               {selected.length>0&&<div className="bulkActions"><span className="muted">Set status to</span><select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}>{editorStatuses("").map(st=><option key={st}>{st}</option>)}</select><button className="primary" disabled={busy} onClick={applyBulkStatus}><Check size={15}/> Apply to {selected.length}</button><button className="textButton" onClick={()=>setSelected([])}>Clear</button></div>}
