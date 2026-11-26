@@ -78,7 +78,7 @@ export function inviteEmail(o: {
   return { subject, html, text };
 }
 
-export type ReviewItem = { title: string; date: string; format: string; status: string; note: string | null };
+export type ReviewItem = { title: string; date: string; format: string; status: string; note: string | null; image?: string | null; link?: string | null };
 
 /** "Ready for your approval" (submitted) and "content review" (reviewed) emails. */
 export function reviewEmail(o: {
@@ -89,8 +89,13 @@ export function reviewEmail(o: {
     const ok = p.status === "Approved";
     const pill = o.kind === "reviewed"
       ? `<td style="padding:12px 0;border-bottom:1px solid #f1e7df;text-align:right;white-space:nowrap"><span style="display:inline-block;padding:4px 10px;border-radius:999px;font:600 11px ${SANS};background:${ok ? "#e9efdf" : "#f6e6df"};color:${ok ? "#4d6a2c" : "#8d4138"}">${esc(p.status)}</span></td>` : "";
-    const note = p.note ? `<div style="font:italic 400 13px/1.5 ${SERIF};color:#8d4138;margin-top:4px">“${esc(p.note)}”</div>` : "";
-    return `<tr><td style="padding:12px 14px 12px 0;border-bottom:1px solid #f1e7df;font:600 12px ${SANS};color:#8a7570;white-space:nowrap;vertical-align:top">${esc(p.date)}</td><td style="padding:12px 0;border-bottom:1px solid #f1e7df;font:400 14px/1.45 ${SANS};color:#3a1c22;vertical-align:top"><b>${esc(p.title)}</b> <span style="color:#8a7570">· ${esc(p.format)}</span>${note}</td>${pill}</tr>`;
+    const changes = p.status === "Changes requested";
+    const note = p.note ? (changes
+      ? `<div style="margin-top:8px;padding:10px 12px;background:#f7ece6;border-left:3px solid #8d4138;border-radius:6px;font:400 13px/1.5 ${SANS};color:#3a1c22"><b style="color:#8d4138;font-size:11px;letter-spacing:.5px;text-transform:uppercase">What to change</b><br>${esc(p.note)}</div>`
+      : `<div style="font:italic 400 13px/1.5 ${SERIF};color:#8d4138;margin-top:4px">“${esc(p.note)}”</div>`) : "";
+    const open = p.link ? `<div style="margin-top:8px"><a href="${esc(p.link)}" style="font:600 12px ${SANS};color:#651321;text-decoration:underline">${changes ? "Open this post to edit →" : "Open this post →"}</a></div>` : "";
+    const thumb = p.image ? `<td style="padding:12px 12px 12px 0;border-bottom:1px solid #f1e7df;vertical-align:top;width:64px"><img src="${esc(p.image)}" width="64" height="80" alt="" style="display:block;width:64px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #ecdfd6"></td>` : `<td style="padding:0;border-bottom:1px solid #f1e7df;width:0"></td>`;
+    return `<tr>${thumb}<td style="padding:12px 0;border-bottom:1px solid #f1e7df;font:400 14px/1.45 ${SANS};color:#3a1c22;vertical-align:top"><div style="font:600 12px ${SANS};color:#8a7570;margin-bottom:2px">${esc(p.date)} · ${esc(p.format)}</div><b>${esc(p.title)}</b>${note}${open}</td>${pill}</tr>`;
   }).join("");
   const html = emailLayout({
     appUrl: o.appUrl, clientName: o.clientName, clientLogo: o.clientLogo, clientColor: o.clientColor, docTitle: o.subject,

@@ -997,3 +997,14 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 
 /* Publish to Instagram button (post editor) */
 .modalActions{flex-wrap:wrap}.modalActions .igPublish{margin-right:auto}
+
+/* "Changes requested" card (top of Feed planner and Calendar) */
+.changesCard{background:#f7ece6;border:1px solid #e2c2b6;border-radius:var(--r-sm,12px);padding:16px 18px;margin-bottom:28px}
+.changesHead{display:flex;gap:10px;align-items:flex-start;color:#8d4138}.changesHead b{display:block;font:22px 'Newsreader',serif;color:#8d4138}.changesHead small{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.changesCard ul{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.changesCard li{display:flex;align-items:center;gap:14px;background:#fffdfa;border:1px solid #eedad0;border-radius:10px;padding:10px}
+.changesCard li img,.changesThumb{width:52px;height:65px;object-fit:cover;border-radius:7px;flex-shrink:0}.changesThumb{display:grid;place-items:center;background:var(--sand);color:var(--wine)}
+.changesInfo{flex:1;min-width:0}.changesInfo small{display:block;font-size:11px;color:var(--muted)}.changesInfo b{display:block;font:17px 'Newsreader',serif;color:var(--wine);margin:2px 0}
+.changesInfo p{margin:4px 0 0;font-size:13px;color:#3a1c22;white-space:pre-wrap;overflow-wrap:anywhere}
+.changesCard li .secondary{flex-shrink:0}
+@media(max-width:560px){.changesCard li{flex-wrap:wrap}.changesCard li .secondary{width:100%}}
