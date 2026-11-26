@@ -72,6 +72,9 @@ export async function POST(req: Request) {
 
   // Always link to the official site (preview links are protected by Vercel login).
   const appUrl = process.env.APP_URL || "https://contentatelier.vercel.app";
+  // Deep link: open this client straight on the approval queue (or the client, for updates to the team).
+  const link = workspaceId && /^[0-9a-f-]{36}$/i.test(workspaceId)
+    ? `${appUrl}/?client=${workspaceId}${kind === "submitted" ? "&view=approvals" : ""}` : appUrl;
   const sender = userData.user.email || "Content Atelier";
   const rows = posts.map(p => {
     const note = p.approval_note ? `<div style="color:#8d5148;font-size:13px;margin-top:4px">“${esc(p.approval_note)}”</div>` : "";
@@ -101,9 +104,9 @@ export async function POST(req: Request) {
 <h1 style="font-family:Georgia,serif;font-weight:400;color:#651321;font-size:26px;margin:12px 0">${esc(subject)}</h1>
 <p style="font-size:14px;color:#3a1c22;line-height:1.5">${intro}</p>
 <table style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
-<a href="${esc(appUrl)}" style="display:inline-block;background:#651321;color:#fffaf1;text-decoration:none;padding:12px 18px;font-size:12px;letter-spacing:1px;text-transform:uppercase">${button}</a>
+<a href="${esc(link)}" style="display:inline-block;background:#651321;color:#fffaf1;text-decoration:none;padding:12px 18px;font-size:12px;letter-spacing:1px;text-transform:uppercase">${button}</a>
 </div></div>`;
-  const text = `${subject}\n\n${posts.map(p => `- ${day(p.publish_date)}: ${p.title}${kind === "reviewed" ? ` — ${p.status}` : ""}${p.approval_note ? ` ("${p.approval_note}")` : ""}`).join("\n")}\n\n${appUrl}`;
+  const text = `${subject}\n\n${posts.map(p => `- ${day(p.publish_date)}: ${p.title}${kind === "reviewed" ? ` — ${p.status}` : ""}${p.approval_note ? ` ("${p.approval_note}")` : ""}`).join("\n")}\n\n${link}`;
 
   try {
     const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: gmailUser, pass: gmailPass } });
