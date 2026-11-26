@@ -744,3 +744,18 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 /* Soft rose accents from the mark */
 ::selection{background:var(--blush);color:var(--wine-deep)}
 @media(max-width:760px){.pickerTop .wordmark small,.studioTop .wordmark{display:none}.pickerTop .wordmark b{font-size:18px}}
+
+/* Sidebar navigation in the Atelier style (desktop) */
+@media(min-width:761px){
+  .sideLabel{font:italic 400 15px var(--display);color:var(--wine2);letter-spacing:0;margin:40px 0 8px 12px}
+  .sidebar .nav{font:400 18px/1.2 var(--display);letter-spacing:-.005em;color:#6b4a50;padding:9px 12px 9px 18px;gap:13px;border-radius:12px}
+  .sidebar .nav svg{width:17px;height:17px;stroke-width:1.6;color:#c98585;transition:color .25s}
+  .sidebar .nav:hover{background:rgba(243,205,201,.35);color:var(--wine)}
+  .sidebar .nav:hover svg{color:var(--wine2)}
+  .sidebar .nav.active{background:linear-gradient(90deg,rgba(243,205,201,.55),rgba(243,205,201,.15));box-shadow:none;color:var(--wine);font-style:italic;font-weight:400}
+  .sidebar .nav.active svg{color:var(--wine)}
+  /* small play-shaped marker taken from the logo */
+  .sidebar .nav.active::before{content:"";position:absolute;left:3px;top:50%;width:0;height:0;border-style:solid;border-width:5px 0 5px 7px;border-color:transparent transparent transparent var(--wine);transform:translateY(-50%)}
+  .sidebar .nav .navBadge{font:600 11px var(--ui);font-style:normal}
+  .sidebarBottom .eyebrow{font:italic 400 15px var(--display);color:var(--wine2)}
+}
