@@ -154,3 +154,13 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
 - People with access to more than one client now land on "Who are we working on today?" and pick a client there.
 - People with only one client (like an approver) go straight into it.
 - "All clients" in the client menu (sidebar, or More on the phone) brings the list back.
+
+## 17. Client details (branding, logo, socials, logins)
+- "New client" opens a full page to fill in the client: name, tagline, logo, brand colours, fonts, voice, website,
+  social links, the contact person, and account logins. Owners/admins reopen it with "Client details"
+  (on the client cards, in the client menu, or in More on the phone).
+- Account access keeps only the login and *where the password is kept* (e.g. 1Password). Passwords are never stored.
+- Database (already applied, `supabase/add-client-profiles.sql` + `supabase/add-client-logo.sql`):
+  - `client_profiles`: team members of a client can read it; only owners/admins can edit.
+  - `client_accounts`: only owners/admins can see or edit.
+  - owners/admins can update a client's `name` and `logo_url`. RLS stays on for every table.
