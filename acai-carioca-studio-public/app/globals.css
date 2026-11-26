@@ -759,3 +759,11 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
   .sidebar .nav .navBadge{font:600 11px var(--ui);font-style:normal}
   .sidebarBottom .eyebrow{font:italic 400 15px var(--display);color:var(--wine2)}
 }
+
+/* Calendar in the Atelier style */
+.calendar .weekdays span{font:italic 400 16px var(--display);color:var(--wine2);letter-spacing:0;text-transform:none}
+.calendar .day>b{font:400 19px/1 var(--display);color:var(--wine);font-variant-numeric:lining-nums}
+.calendar .day.today>b{background:var(--wine);color:#fff8f2;font-style:italic;padding:3px 9px 4px;border-radius:999px}
+.calendar .dayPost span,.calendar .dayTask>span,.calendar .dayEmail>span{font-family:var(--display);font-size:14px;line-height:1.25;letter-spacing:-.005em;font-weight:400}
+.calendar .dayTask>span,.calendar .dayEmail>span{font-weight:500}
+.calendar .dayTask small,.calendar .dayEmail small{font-family:var(--ui);font-size:11px}
