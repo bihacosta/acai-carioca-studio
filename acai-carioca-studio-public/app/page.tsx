@@ -77,6 +77,7 @@ export default function Home() {
   const [profile,setProfile] = useState<{title:string;subtitle?:string|null;avatar_url?:string|null;instagram_handle?:string|null;website?:string|null;highlights?:string[]|null}>({title:""});
   const [editorPreset,setEditorPreset] = useState<{format?:string;date?:string}|undefined>(undefined);
   const [moreOpen,setMoreOpen] = useState(false);
+  const [clientSheet,setClientSheet] = useState(false);
   const [noAccess,setNoAccess] = useState(false);
   const [team,setTeam] = useState<TeamRow[]>([]);
   const [grantRole,setGrantRole] = useState<Record<string,string>>({});
@@ -248,19 +249,19 @@ export default function Home() {
   }
 
   function showClientPicker(){
-    setClientMenu(false);setMoreOpen(false);
+    setClientMenu(false);setMoreOpen(false);setClientSheet(false);
     openClientRef.current=null;
     setPosts([]);setTasks([]);setEmails([]);setTeam([]);setSnippets([]);setSelected([]);
     setWorkspaceId(null);setPicking(true);
   }
   async function switchClient(id:string){
-    if(!session||(id===workspaceId&&!picking)){setClientMenu(false);return;}
-    setClientMenu(false);setMoreOpen(false);
+    if(!session||(id===workspaceId&&!picking)){setClientMenu(false);setClientSheet(false);return;}
+    setClientMenu(false);setMoreOpen(false);setClientSheet(false);
     setPosts([]);setTasks([]);setEmails([]);setTeam([]);setSnippets([]);setSelected([]);
     setView("feed");setFeedMode("grid");
     await loadPosts(session.user.id,id);
   }
-  function createClient(){setClientMenu(false);setMoreOpen(false);setStudio({client:null});}
+  function createClient(){setClientMenu(false);setMoreOpen(false);setClientSheet(false);setStudio({client:null});}
   async function loadClientProfiles(ids:string[]){
     if(!supabase||ids.length===0)return;
     const {data}=await supabase.from("client_profiles").select("*").in("workspace_id",ids);
@@ -672,7 +673,7 @@ export default function Home() {
       <div className="sidebarBottom"><p className="eyebrow">Your team</p><div className="userLine"><span className="avatar">{session.user.email?.[0]?.toUpperCase()}</span><span>{session.user.email}</span></div><button className="nav signOutNav" onClick={()=>supabase?.auth.signOut()} ><LogOut size={16}/> Sign out</button></div>
     </aside>
     <section className="mainArea">
-      <header className="topbar"><div className="topbarText"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="topTitle">{currentClient?.name||"Your clients"}</span></div><div className="topActions">{(!isApprover||view==="todo")&&view!=="team"&&view!=="bio"&&view!=="email"&&view!=="brand"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}<button className="iconButton phoneOnly roundIcon" aria-label="Sign out" onClick={()=>supabase?.auth.signOut()}><LogOut size={16}/></button></div></header>
+      <header className="topbar">{(clients.length>1||isPlatformOwner||canManage)?<button className="topbarText topClientButton" onClick={()=>setClientSheet(true)} aria-label="Switch client"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="topTitle">{currentClient?.name||"Your clients"}</span><ChevronDown size={16} className="topChevron"/></button>:<div className="topbarText"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="topTitle">{currentClient?.name||"Your clients"}</span></div>}<div className="topActions">{(!isApprover||view==="todo")&&view!=="team"&&view!=="bio"&&view!=="email"&&view!=="brand"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}<button className="iconButton phoneOnly roundIcon" aria-label="Sign out" onClick={()=>supabase?.auth.signOut()}><LogOut size={16}/></button></div></header>
       <div className="content viewFade" key={view}>
         <div className="welcome"><div><p className="pageContext"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><b>{currentClient?.name}</b>{pageContext&&<span>{pageContext}</span>}</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":view==="bio"?"Link in bio":view==="email"?"Email marketing":view==="brand"?"Brand kit":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Everything waiting for approval, in one place.":view==="team"?"Decide who can see and work on your calendar.":view==="bio"?"One page for your Instagram bio: menu, locations, ordering.":view==="email"?"Plan every send, keep the voice on brand, and track what works.":view==="brand"?"Everything the team needs to work with this client, in one place.":"Small steps, beautifully organized."}</p></div><div className="welcomeSide"><span className="deskOnly">{(!isApprover||view==="todo")&&view!=="team"&&view!=="bio"&&view!=="email"&&view!=="brand"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</span>{view==="bio"||view==="brand"?null:view==="email"?<div className="stats"><div><b>{emails.filter(e=>e.status!=="Sent").length}</b><small>planned</small></div><div><b>{emails.filter(e=>e.status==="Awaiting approval").length}</b><small>awaiting</small></div><div><b>{emails.filter(e=>e.status==="Sent").length}</b><small>sent</small></div></div>:view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length+awaitingEmails.length}</b><small>waiting</small></div><div><b>{sessionReviewed.filter(r=>r.decision==="Approved").length}</b><small>approved now</small></div><div><b>{sessionReviewed.filter(r=>r.decision!=="Approved").length}</b><small>changes asked</small></div></div>:view==="todo"?<div className="stats"><div><b>{tasks.length}</b><small>tasks</small></div><div><b>{tasks.filter(t=>t.status!=="Done").length}</b><small>open</small></div><div><b>{tasks.filter(t=>t.status==="Done").length}</b><small>completed</small></div></div>
           :<div className="stats"><div><b>{nextPostLabel}</b><small>next post</small></div><div><b>{weekCount}</b><small>in the next 7 days</small></div><div><b>{awaitingAll}</b><small>awaiting approval</small></div></div>}</div></div>
@@ -772,10 +773,7 @@ export default function Home() {
     {taskModal&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setTaskModal(false)}}><form className="modal taskModal" onSubmit={saveTask}><div className="modalHead"><div><p className="eyebrow">Team checklist</p><h2>{editingTask?"Edit task":"Add a task"}</h2></div><button type="button" className="iconButton" onClick={()=>setTaskModal(false)}><X size={18}/></button></div><label>Task<input required autoFocus={!editingTask} value={taskForm.title} onChange={e=>setTaskForm({...taskForm,title:e.target.value})} placeholder="Ex: Approve next week's content"/></label><label>Notes<textarea rows={3} value={taskForm.details} onChange={e=>setTaskForm({...taskForm,details:e.target.value})} placeholder="Add a little context for the team…"/></label><div className="formGrid"><label>Checklist / project<input value={taskForm.list_name} onChange={e=>setTaskForm({...taskForm,list_name:e.target.value})} placeholder="Ex: November content"/></label><label>Due date<input type="date" value={taskForm.due_date} onChange={e=>setTaskForm({...taskForm,due_date:e.target.value})}/></label><label>Priority<select value={taskForm.priority} onChange={e=>setTaskForm({...taskForm,priority:e.target.value as Task["priority"]})}><option>Low</option><option>Normal</option><option>High</option></select></label><label>Assigned to<input value={taskForm.assignee} onChange={e=>setTaskForm({...taskForm,assignee:e.target.value})} placeholder="Name or email (optional)"/></label></div><div className="modalActions"><button type="button" className="secondary" onClick={()=>setTaskModal(false)}>Cancel</button><button className="primary" disabled={busy}>{busy?"Saving…":editingTask?"Save changes":"Add to checklist"}</button></div></form></div>}
     {moreOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setMoreOpen(false)}}><div className="modal moreSheet">
       <div className="moreUser"><span className="avatar">{session.user.email?.[0]?.toUpperCase()}</span><span>{session.user.email}</span></div>
-      {(clients.length>1||isPlatformOwner)&&<div className="moreClients"><small>Clients</small>{clients.map(c=><button key={c.id} className={"moreItem"+(c.id===workspaceId?" on":"")} onClick={()=>switchClient(c.id)}><span className="clientLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span> {c.name}{c.id===workspaceId&&<Check size={15} className="moreCheck"/>}</button>)}
-        {currentClient&&(currentClient.role==="owner"||currentClient.role==="admin")&&<button className="moreItem" onClick={()=>{setMoreOpen(false);setStudio({client:currentClient});}}><Palette size={18}/> Client details</button>}
-        {clients.length>1&&<button className="moreItem" onClick={showClientPicker}><LayoutGrid size={18}/> All clients</button>}
-        {isPlatformOwner&&<button className="moreItem" onClick={()=>{setMoreOpen(false);createClient();}}><Plus size={18}/> New client</button>}</div>}
+      {(clients.length>1||isPlatformOwner||canManage)&&<button className="moreItem moreClientNow" onClick={()=>{setMoreOpen(false);setClientSheet(true);}}><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><span className="moreClientText"><small>Client</small>{currentClient?.name}</span><span className="moreSwitch">Switch</span></button>}
       <button className="moreItem" onClick={()=>{setView("email");setMoreOpen(false);}}><Mail size={18}/> Email</button>
       <button className="moreItem" onClick={()=>{setView("library");setMoreOpen(false);}}><Images size={18}/> Creative library</button>
       {canManage&&<button className="moreItem" onClick={()=>{setView("team");loadTeam();setMoreOpen(false);}}><Users size={18}/> Team{pendingPeople.length>0&&<span className="navBadge">{pendingPeople.length}</span>}</button>}
@@ -783,6 +781,16 @@ export default function Home() {
       <button className="moreItem" onClick={()=>{setView("brand");setMoreOpen(false);}}><BookMarked size={18}/> Brand kit</button>
       <button className="moreItem danger" onClick={()=>supabase?.auth.signOut()}><LogOut size={18}/> Sign out</button>
       <button className="secondary" onClick={()=>setMoreOpen(false)}>Close</button>
+    </div></div>}
+    {clientSheet&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setClientSheet(false)}}><div className="modal clientSheet" role="dialog" aria-label="Choose a client">
+      <div className="clientSheetHead"><h2>Your clients</h2><button className="iconButton roundIcon" aria-label="Close" onClick={()=>setClientSheet(false)}><X size={16}/></button></div>
+      <div className="clientSheetList">{clients.map(c=>{const col=clientProfiles[c.id]?.brand_colors?.[0]||"#651321";return <button key={c.id} className={"clientSheetItem"+(c.id===workspaceId?" on":"")} onClick={()=>switchClient(c.id)} style={{"--client":col} as React.CSSProperties}>
+        <span className="clientLogo">{c.logo_url?<img src={c.logo_url} alt=""/>:<b>{c.name[0]}</b>}</span><span className="clientSheetName"><b>{c.name}</b><small>{c.role==="owner"?"Owner":c.role==="admin"?"Admin":c.role==="approver"?"Approver":c.role==="viewer"?"Viewer":"Editor"}</small></span>{c.id===workspaceId?<Check size={18}/>:<ChevronRight size={18}/>}</button>;})}</div>
+      <div className="clientSheetActions">
+        {currentClient&&(currentClient.role==="owner"||currentClient.role==="admin")&&<button className="moreItem" onClick={()=>{setClientSheet(false);setStudio({client:currentClient});}}><Palette size={18}/> {currentClient.name} details</button>}
+        {clients.length>1&&<button className="moreItem" onClick={showClientPicker}><LayoutGrid size={18}/> All clients</button>}
+        {isPlatformOwner&&<button className="moreItem" onClick={createClient}><Plus size={18}/> New client</button>}
+      </div>
     </div></div>}
     {studioView}
     {notice&&<div className="noticeBar" role="status" onClick={()=>setNotice("")}>{notice}<X size={14}/></div>}
