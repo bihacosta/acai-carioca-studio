@@ -86,8 +86,10 @@ export async function POST(req: Request) {
   } else {
     const approved = posts.filter(p => p.status === "Approved").length;
     const changes = posts.filter(p => p.status === "Changes requested").length;
-    const parts = [approved ? `${approved} approved` : "", changes ? `${changes} with changes requested` : ""].filter(Boolean).join(", ");
-    subject = `${clientName ? clientName + ": " : ""}content review, ${parts || "update"}`;
+    const parts = [approved ? `${approved} approved` : "", changes ? `${changes} need${changes === 1 ? "s" : ""} changes` : ""].filter(Boolean).join(", ");
+    // Clear at a glance in the inbox: ✅ approved, ✏️ needs changes.
+    const icons = [approved ? `✅ ${approved} approved` : "", changes ? `✏️ ${changes} need${changes === 1 ? "s" : ""} changes` : ""].filter(Boolean).join(" · ");
+    subject = `${icons || "Content review"}${clientName ? " · " + clientName : ""}`;
     intro = `${esc(sender)} reviewed your content: <b>${esc(parts || "update")}</b>.`;
   }
 
