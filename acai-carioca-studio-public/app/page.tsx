@@ -404,15 +404,30 @@ export default function Home() {
     if(team.some(t=>!t.pending&&t.email?.toLowerCase()===email)){setNotice(`${email} already has access to this client.`);return;}
     setBusy(true);setNotice("");
     const existing=invites.find(i=>i.email===email);
-    const {error}=existing?await supabase.from("workspace_invites").update({role:inviteRole}).eq("id",existing.id):await supabase.from("workspace_invites").insert({workspace_id:workspaceId,email,role:inviteRole,invited_by:session.user.id});
+    const {data:saved,error}=existing?await supabase.from("workspace_invites").update({role:inviteRole}).eq("id",existing.id).select("id").single():await supabase.from("workspace_invites").insert({workspace_id:workspaceId,email,role:inviteRole,invited_by:session.user.id}).select("id").single();
     if(error)setNotice("Could not save the invite: "+error.message);
     else{
       // Someone who already signed in and is waiting can be let in right away.
       const waiting=team.find(t=>t.pending&&t.email?.toLowerCase()===email);
       if(waiting){await setMemberRole(waiting,inviteRole);await supabase.from("workspace_invites").delete().eq("workspace_id",workspaceId).eq("email",email);}
-      else setNotice(`Invite saved. Send ${email} the link ${location.origin} and ask them to sign in with this email. They'll go straight to ${currentClient?.name||"this client"}.`);
+      else if(saved){const r=await emailInvite((saved as any).id);setNotice(r.ok?`Invite emailed to ${email}. When they sign in with this email, they'll go straight to ${currentClient?.name||"this client"}.`:`Invite saved, but the email wasn't sent (${r.error}). Use “Copy message” to send it yourself.`);}
       setInviteEmail("");await loadTeam();
     }
+    setBusy(false);
+  }
+  async function emailInvite(id:string){
+    if(!supabase)return {ok:false,error:"Not connected."};
+    const {data:{session:current}}=await supabase.auth.getSession();
+    try{
+      const res=await fetch("/api/invite",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${current?.access_token||""}`},body:JSON.stringify({inviteId:id})});
+      const out=await res.json().catch(()=>({}));
+      return res.ok?{ok:true,error:""}:{ok:false,error:(out.error as string)||"Could not send the email."};
+    }catch{return {ok:false,error:"Could not reach the email service."};}
+  }
+  async function resendInvite(id:string,email:string){
+    setBusy(true);setNotice("");
+    const r=await emailInvite(id);
+    setNotice(r.ok?`Invite emailed again to ${email}.`:`Email not sent: ${r.error}`);
     setBusy(false);
   }
   async function cancelInvite(id:string){
@@ -731,9 +746,9 @@ export default function Home() {
             {browseDates&&reviewed.length>0&&<><div className="sectionHead reviewedHead"><div><p className="eyebrow">Also in these two weeks</p><h2>Other content</h2></div></div><div className="libraryList">{reviewed.map(p=><div className="libraryItem" key={p.id}><img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{prettyDate(p.publish_date)} · {p.format}{p.approval_note?" · “"+p.approval_note+"”":""}</small></div><span className={"statusPill"+(p.status==="Approved"?" ok":p.status==="Changes requested"?" warn":"")}>{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>{isApprover?"View":"Edit"}</button></div>)}</div></>}
           </>}
           {view==="team"&&canManage&&<>
-            <div className="sectionHead"><div><p className="eyebrow">Bring someone in</p><h2>Invite to {currentClient?.name||"this client"}</h2></div><span className="muted">They join this client as soon as they sign in with this email</span></div>
+            <div className="sectionHead"><div><p className="eyebrow">Bring someone in</p><h2>Invite to {currentClient?.name||"this client"}</h2></div><span className="muted">We email them a link. They join this client as soon as they sign in with this email</span></div>
             <form className="inviteForm" onSubmit={sendInvite}><input type="email" required value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="name@email.com" aria-label="Email to invite"/><select aria-label="Role for the invite" value={inviteRole} onChange={e=>setInviteRole(e.target.value)}>{roleOptions.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select><button className="primary" disabled={busy}><UserPlus size={15}/> Invite</button></form>
-            {invites.length>0&&<div className="teamList inviteList">{invites.map(i=><div className="teamRow inviteRow" key={i.id}><span className="avatar">{i.email[0]?.toUpperCase()}</span><div className="teamInfo"><b>{i.email}</b><small><Mail size={11}/> Invited {new Date(i.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})} · hasn't signed in yet</small></div><span className="statusPill">{roleOptions.find(r=>r.value===i.role)?.label||i.role}</span><button className="iconButton" onClick={()=>copyInvite(i.email)}>Copy message</button><button className="iconButton" onClick={()=>cancelInvite(i.id)}>Cancel</button></div>)}</div>}
+            {invites.length>0&&<div className="teamList inviteList">{invites.map(i=><div className="teamRow inviteRow" key={i.id}><span className="avatar">{i.email[0]?.toUpperCase()}</span><div className="teamInfo"><b>{i.email}</b><small><Mail size={11}/> Invited {new Date(i.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})} · hasn't signed in yet</small></div><span className="statusPill">{roleOptions.find(r=>r.value===i.role)?.label||i.role}</span><button className="iconButton" disabled={busy} onClick={()=>resendInvite(i.id,i.email)}>Resend email</button><button className="iconButton" onClick={()=>copyInvite(i.email)}>Copy message</button><button className="iconButton" onClick={()=>cancelInvite(i.id)}>Cancel</button></div>)}</div>}
             <div className="sectionHead reviewedHead"><div><p className="eyebrow">Waiting for you</p><h2>Access requests</h2></div><span className="muted">People who signed in without an invite</span></div>
             {pendingPeople.length===0?<div className="empty teamEmpty"><UserPlus size={26}/><h3>No pending requests.</h3><p>Invite people above so they land in the right client. Anyone who signs in without an invite shows up here.</p></div>:
             <div className="teamList">{pendingPeople.map(p=><div className="teamRow pendingRow" key={p.user_id}><span className="avatar">{p.email?.[0]?.toUpperCase()}</span><div className="teamInfo"><b>{p.email}</b><small><Clock size={11}/> Requested {new Date(p.since).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</small></div><select aria-label="Role" value={grantRole[p.user_id]||"editor"} onChange={e=>setGrantRole({...grantRole,[p.user_id]:e.target.value})}>{roleOptions.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select><button className="primary" disabled={busy} onClick={()=>setMemberRole(p,grantRole[p.user_id]||"editor")}><Check size={15}/> Give access</button><button className="iconButton" disabled={busy} onClick={()=>dismissRequest(p)}>Decline</button></div>)}</div>}
