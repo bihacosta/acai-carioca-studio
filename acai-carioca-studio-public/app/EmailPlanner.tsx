@@ -87,12 +87,13 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!supabase || readOnly) return;
+    const resubmit = (e.nativeEvent as SubmitEvent).submitter?.getAttribute("data-resubmit") === "1";
     setBusy(true); setError("");
     try {
       let hero = f.hero_image_url;
       if (heroFile) hero = await uploadImage(heroFile, userId);
       const payload = {
-        ...f, hero_image_url: hero || null, series: f.series.trim() || null, series_number: f.series.trim() ? f.series_number : null,
+        ...f, ...(resubmit ? { status: "Awaiting approval" } : {}), hero_image_url: hero || null, series: f.series.trim() || null, series_number: f.series.trim() ? f.series_number : null,
         subject: f.subject || null, preview_text: f.preview_text || null, send_date: f.send_date || null, body: f.body || null,
         cta_label: f.cta_label || null, cta_url: f.cta_url || null, square_url: f.square_url || null, results_notes: f.results_notes || null,
         workspace_id: workspaceId, updated_at: new Date().toISOString()
@@ -101,7 +102,7 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
         ? await supabase.from("email_campaigns").update(payload).eq("id", email.id).eq("workspace_id", workspaceId)
         : await supabase.from("email_campaigns").insert(payload);
       if (r.error) throw r.error;
-      onSaved(email ? "Email saved." : "Email added to the plan.");
+      onSaved(resubmit ? "Saved and sent back for approval." : email ? "Email saved." : "Email added to the plan.");
     } catch (err: unknown) {
       setError((err as { message?: string })?.message || "Could not save this email.");
       setBusy(false);
@@ -126,7 +127,7 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
 
         {email?.approval_note && <div className={"feedbackBox" + (email.status === "Changes requested" ? " changes" : "")}><MessageSquare size={15} /><div>
           <b>Approver feedback</b><p>{email.approval_note}</p>
-          {!readOnly && email.status === "Changes requested" && <small>After updating, set the status back to “Awaiting approval”.</small>}</div></div>}
+          {!readOnly && email.status === "Changes requested" && <small>When you're done, click “Save & send back for approval”.</small>}</div></div>}
 
         {/* Inbox preview */}
         <div className="inboxPreview" aria-label="How it looks in the inbox">
@@ -207,7 +208,10 @@ function EmailEditor({ email, preset, allEmails, readOnly, canDelete, workspaceI
             {email?.status === "Awaiting approval" && <button type="button" className="primary" onClick={onOpenApprovals}>Review in Approvals</button>}
           </> : <>
             <button type="button" className="secondary" onClick={onClose}>Cancel</button>
-            <button className="primary" disabled={busy}>{busy ? "Saving…" : email ? "Save changes" : "Add to plan"}</button>
+            {email?.status === "Changes requested" ? <>
+              <button className="secondary" disabled={busy}>Save for later</button>
+              <button className="primary" data-resubmit="1" disabled={busy}>{busy ? "Saving…" : "Save & send back for approval"}</button>
+            </> : <button className="primary" disabled={busy}>{busy ? "Saving…" : email ? "Save changes" : "Add to plan"}</button>}
           </>}
         </div>
       </form>

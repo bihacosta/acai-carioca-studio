@@ -91,6 +91,7 @@ export default function Home() {
   const [browseDates,setBrowseDates] = useState(false);
   const [sessionReviewed,setSessionReviewed] = useState<{id:string;title:string;decision:string}[]>([]);
   const [leaving,setLeaving] = useState<string[]>([]);
+  const [approvedSeen,setApprovedSeen] = useState<string|null>(null);
   const linkRef = useRef<{client:string|null;view:string|null;post?:string|null;ig?:{code:string|null;state:string|null;error:string|null}|null}|null>(null);
   const [reviewNote,setReviewNote] = useState("");
   const [loading,setLoading] = useState(true);
@@ -103,6 +104,8 @@ export default function Home() {
   const [editing,setEditing] = useState<Post|null>(null);
 
   // Each page starts at the top (phones keep the old scroll position otherwise).
+  useEffect(()=>{if(!workspaceId)return;try{setApprovedSeen(localStorage.getItem("ca-approved-seen-"+workspaceId));}catch{setApprovedSeen(null);}},[workspaceId]);
+  function dismissApproved(){const now=new Date().toISOString();setApprovedSeen(now);try{if(workspaceId)localStorage.setItem("ca-approved-seen-"+workspaceId,now);}catch{}}
   useEffect(()=>{window.scrollTo({top:0,left:0,behavior:"instant" as ScrollBehavior});},[view,workspaceId]);
   useEffect(()=>{
     if(!notice)return;
@@ -605,6 +608,11 @@ export default function Home() {
   // Posts and emails the approver sent back: shown as a card at the top of the Feed planner and Calendar.
   const changesPosts=posts.filter(p=>p.status==="Changes requested").sort((a,b)=>(a.publish_date||"9").localeCompare(b.publish_date||"9"));
   const changesEmails=emails.filter(e=>e.status==="Changes requested");
+  // Newly approved items (since the last "Got it"), remembered per client in this browser.
+  const approvedSince=approvedSeen||new Date(Date.now()-7*864e5).toISOString();
+  const approvedPosts=posts.filter(p=>p.status==="Approved"&&p.reviewed_at&&p.reviewed_at>approvedSince).sort((a,b)=>(a.publish_date||"9").localeCompare(b.publish_date||"9"));
+  const approvedEmails=emails.filter(e=>e.status==="Approved"&&e.reviewed_at&&e.reviewed_at>approvedSince);
+  const changesCount=changesPosts.length+changesEmails.length,approvedCount=approvedPosts.length+approvedEmails.length;
   const periodLabel=browseDates?`${prettyDate(reviewStart)} – ${prettyDate(reviewEnd)}`:queueDates.length?`${prettyDate(queueDates[0])} – ${prettyDate(queueDates[queueDates.length-1])}`:"";
   const allAwaiting=posts.filter(p=>p.status==="Awaiting approval").length+emails.filter(e=>e.status==="Awaiting approval").length;
   const filtered=useMemo(()=>posts.filter(p=>(p.title+" "+p.pillar+" "+p.location).toLowerCase().includes(search.toLowerCase())),[posts,search]);
@@ -699,20 +707,38 @@ export default function Home() {
         <div className="welcome"><div><p className="pageContext"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><b>{currentClient?.name}</b>{pageContext&&<span>{pageContext}</span>}</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":view==="bio"?"Link in bio":view==="email"?"Email marketing":view==="brand"?"Brand kit":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Everything waiting for approval, in one place.":view==="team"?"Decide who can see and work on your calendar.":view==="bio"?"One page for your Instagram bio: menu, locations, ordering.":view==="email"?"Plan every send, keep the voice on brand, and track what works.":view==="brand"?"Everything the team needs to work with this client, in one place.":"Small steps, beautifully organized."}</p></div><div className="welcomeSide"><span className="deskOnly">{(!isApprover||view==="todo")&&view!=="team"&&view!=="bio"&&view!=="email"&&view!=="brand"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</span>{view==="bio"||view==="brand"?null:view==="email"?<div className="stats"><div><b>{emails.filter(e=>e.status!=="Sent").length}</b><small>planned</small></div><div><b>{emails.filter(e=>e.status==="Awaiting approval").length}</b><small>awaiting</small></div><div><b>{emails.filter(e=>e.status==="Sent").length}</b><small>sent</small></div></div>:view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length+awaitingEmails.length}</b><small>waiting</small></div><div><b>{sessionReviewed.filter(r=>r.decision==="Approved").length}</b><small>approved now</small></div><div><b>{sessionReviewed.filter(r=>r.decision!=="Approved").length}</b><small>changes asked</small></div></div>:view==="todo"?<div className="stats"><div><b>{tasks.length}</b><small>tasks</small></div><div><b>{tasks.filter(t=>t.status!=="Done").length}</b><small>open</small></div><div><b>{tasks.filter(t=>t.status==="Done").length}</b><small>completed</small></div></div>
           :<div className="stats"><div><b>{nextPostLabel}</b><small>next post</small></div><div><b>{weekCount}</b><small>in the next 7 days</small></div><div><b>{awaitingAll}</b><small>awaiting approval</small></div></div>}</div></div>
         {loading?<p className="muted">Loading your workspace…</p>:<>
-          {!isApprover&&(view==="feed"||view==="calendar")&&changesPosts.length+changesEmails.length>0&&<section className="changesCard" aria-label="Changes requested">
-            <div className="changesHead"><MessageSquare size={17}/><div><b>{changesPosts.length+changesEmails.length===1?"1 item needs changes":`${changesPosts.length+changesEmails.length} items need changes`}</b><small>The approver left a comment on each one. After editing, set the status back to “Awaiting approval”.</small></div></div>
-            <ul>
-              {changesPosts.map(p=><li key={p.id}>
-                {(p.format==="Reel"&&p.cover_url)||p.image_url?<img src={(p.format==="Reel"&&p.cover_url)||p.image_url} alt=""/>:<span className="changesThumb"><Images size={18}/></span>}
-                <div className="changesInfo"><small>{prettyDate(p.publish_date)} · {p.format}</small><b>{p.title}</b>{p.approval_note&&<p>“{p.approval_note}”</p>}</div>
-                <button className="secondary" onClick={()=>openEdit(p)}>Open post</button>
-              </li>)}
-              {changesEmails.map(e=><li key={e.id}>
-                <span className="changesThumb"><Mail size={18}/></span>
-                <div className="changesInfo"><small>{prettyDate(e.send_date||null)} · Email</small><b>{e.subject||e.title}</b>{e.approval_note&&<p>“{e.approval_note}”</p>}</div>
-                <button className="secondary" onClick={()=>setView("email")}>Open email</button>
-              </li>)}
-            </ul>
+          {!isApprover&&(view==="feed"||view==="calendar")&&changesCount+approvedCount>0&&<section className="changesCard updatesCard" aria-label="Updates from the approver">
+            <div className="updatesTitle"><b>Updates from the approver</b></div>
+            {changesCount>0&&<div className="updatesGroup">
+              <div className="changesHead"><MessageSquare size={17}/><div><b>{changesCount===1?"1 item needs changes":`${changesCount} items need changes`}</b><small>Open each one, make the change, then click “Save & send back for approval”. It leaves this list.</small></div></div>
+              <ul>
+                {changesPosts.map(p=><li key={p.id}>
+                  {(p.format==="Reel"&&p.cover_url)||p.image_url?<img src={(p.format==="Reel"&&p.cover_url)||p.image_url} alt=""/>:<span className="changesThumb"><Images size={18}/></span>}
+                  <div className="changesInfo"><small>{prettyDate(p.publish_date)} · {p.format}</small><b>{p.title}</b>{p.approval_note&&<p>“{p.approval_note}”</p>}</div>
+                  <button className="secondary" onClick={()=>openEdit(p)}>Open post</button>
+                </li>)}
+                {changesEmails.map(e=><li key={e.id}>
+                  <span className="changesThumb"><Mail size={18}/></span>
+                  <div className="changesInfo"><small>{prettyDate(e.send_date||null)} · Email</small><b>{e.subject||e.title}</b>{e.approval_note&&<p>“{e.approval_note}”</p>}</div>
+                  <button className="secondary" onClick={()=>setView("email")}>Open email</button>
+                </li>)}
+              </ul>
+            </div>}
+            {approvedCount>0&&<div className="updatesGroup approvedGroup">
+              <div className="changesHead"><BadgeCheck size={17}/><div><b>{approvedCount===1?"1 item approved":`${approvedCount} items approved`}</b><small>Ready to schedule or publish.</small></div><button className="textButton" onClick={dismissApproved}><Check size={14}/> Got it</button></div>
+              <ul>
+                {approvedPosts.map(p=><li key={p.id}>
+                  {(p.format==="Reel"&&p.cover_url)||p.image_url?<img src={(p.format==="Reel"&&p.cover_url)||p.image_url} alt=""/>:<span className="changesThumb"><Images size={18}/></span>}
+                  <div className="changesInfo"><small>{prettyDate(p.publish_date)} · {p.format}</small><b>{p.title}</b>{p.approval_note&&<p>“{p.approval_note}”</p>}</div>
+                  <button className="secondary" onClick={()=>openEdit(p)}>Open post</button>
+                </li>)}
+                {approvedEmails.map(e=><li key={e.id}>
+                  <span className="changesThumb"><Mail size={18}/></span>
+                  <div className="changesInfo"><small>{prettyDate(e.send_date||null)} · Email</small><b>{e.subject||e.title}</b></div>
+                  <button className="secondary" onClick={()=>setView("email")}>Open email</button>
+                </li>)}
+              </ul>
+            </div>}
           </section>}
           {view==="feed"&&<><div className="sectionHead feedHead"><div><h2>{feedMode==="stories"?"Stories":feedMode==="instagram"?"Live on Instagram":"Feed preview"}</h2></div>
             <div className="feedControls">

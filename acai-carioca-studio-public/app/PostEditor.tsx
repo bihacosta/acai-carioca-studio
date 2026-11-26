@@ -196,6 +196,8 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!supabase || readOnly) return;
+    // "Save & send back for approval" (a post that came back with changes requested)
+    const resubmit = (e.nativeEvent as SubmitEvent).submitter?.getAttribute("data-resubmit") === "1";
     if ((onGrid || isStory) && images.length === 0) { setError("Add at least one image, or switch to “Save as draft”."); return; }
     if (form.caption.length > CAPTION_LIMIT) { setError(`Instagram captions can have up to ${CAPTION_LIMIT} characters.`); return; }
     setBusy(true); setError("");
@@ -209,7 +211,7 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
       if (video_url) { try { new URL(video_url); } catch { throw new Error("The video link doesn't look right. Paste the full link, for example https://drive.google.com/…"); } }
       const { date, ...fields } = form;
       const payload = {
-        ...fields, caption: form.caption || null, publish_date: date || null,
+        ...fields, ...(resubmit ? { status: "Awaiting approval" } : {}), caption: form.caption || null, publish_date: date || null,
         image_url: urls[0] || "", extra_images: urls.slice(1), cover_url, video_url,
         crop_x: crop.x, crop_y: crop.y, on_grid: isStory ? true : onGrid, workspace_id: workspaceId
       };
@@ -217,7 +219,7 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
         ? await supabase.from("posts").update(payload).eq("id", post.id).eq("workspace_id", workspaceId)
         : await supabase.from("posts").insert({ ...payload, sort_order: onGrid ? -1 : 0, created_by: userId });
       if (result.error) throw result.error;
-      onSaved(onGrid ? "Content saved." : "Saved to drafts.");
+      onSaved(resubmit ? "Saved and sent back for approval." : onGrid ? "Content saved." : "Saved to drafts.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : (err as { message?: string })?.message || "Could not save this content.");
       setBusy(false);
@@ -236,7 +238,7 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
 
         {post?.approval_note && <div className={"feedbackBox" + (post.status === "Changes requested" ? " changes" : "")}><MessageSquare size={15} /><div>
           <b>{post.status === "Changes requested" ? "Changes requested: what to change" : "Approver feedback"}{post.reviewed_at ? " · " + new Date(post.reviewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</b>
-          <p>{post.approval_note}</p>{!readOnly && post.status === "Changes requested" && <small>After updating, set the status back to “Awaiting approval”.</small>}
+          <p>{post.approval_note}</p>{!readOnly && post.status === "Changes requested" && <small>When you're done, click “Save & send back for approval”.</small>}
         </div></div>}
 
         {/* Images */}
@@ -344,7 +346,10 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
               <Instagram size={15} /> {publishing || (confirmPublish ? `Post on @${igUser} now?` : "Publish to Instagram")}
             </button>}
             <button type="button" className="secondary" onClick={onClose}>Cancel</button>
-            <button className="primary" disabled={busy || !!publishing}>{busy ? "Saving…" : post ? "Save changes" : onGrid ? "Add to studio" : "Save draft"}</button>
+            {post?.status === "Changes requested" ? <>
+              <button className="secondary" disabled={busy || !!publishing}>Save for later</button>
+              <button className="primary" data-resubmit="1" disabled={busy || !!publishing}>{busy ? "Saving…" : "Save & send back for approval"}</button>
+            </> : <button className="primary" disabled={busy || !!publishing}>{busy ? "Saving…" : post ? "Save changes" : onGrid ? "Add to studio" : "Save draft"}</button>}
           </>}
         </div>
       </form>

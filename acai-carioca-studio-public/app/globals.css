@@ -1008,3 +1008,11 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .changesInfo p{margin:4px 0 0;font-size:13px;color:#3a1c22;white-space:pre-wrap;overflow-wrap:anywhere}
 .changesCard li .secondary{flex-shrink:0}
 @media(max-width:560px){.changesCard li{flex-wrap:wrap}.changesCard li .secondary{width:100%}}
+
+/* "Updates from the approver" card: needs changes + newly approved */
+.updatesTitle b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.updatesGroup+.updatesGroup{margin-top:18px;padding-top:16px;border-top:1px solid #e2c2b6}
+.updatesCard .changesHead>div{flex:1}
+.approvedGroup .changesHead,.approvedGroup .changesHead b{color:#4d6a2c}
+.approvedGroup li{border-color:#dfe6d3}
+.approvedGroup .textButton{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
