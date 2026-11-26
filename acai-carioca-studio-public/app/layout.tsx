@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Atelier", statusBarStyle: "default" }
 };
 export const viewport: Viewport = {
-  themeColor: "#f5f1eb",
+  themeColor: "#fbf4ee",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover"

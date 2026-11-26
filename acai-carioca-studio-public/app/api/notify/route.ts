@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     const note = p.approval_note ? `<div style="color:#8d5148;font-size:13px;margin-top:4px">“${esc(p.approval_note)}”</div>` : "";
     const status = kind === "reviewed"
       ? `<td style="padding:10px 0;border-bottom:1px solid #e6dbd1;font-size:12px;color:${p.status === "Approved" ? "#62813b" : "#8d5148"};white-space:nowrap;text-align:right">${esc(p.status)}</td>` : "";
-    return `<tr><td style="padding:10px 12px 10px 0;border-bottom:1px solid #e6dbd1;font-size:12px;color:#887b76;white-space:nowrap">${esc(day(p.publish_date))}</td><td style="padding:10px 0;border-bottom:1px solid #e6dbd1;font-size:14px;color:#35242b"><b>${esc(p.title)}</b> <span style="color:#887b76">· ${esc(p.format)}</span>${note}</td>${status}</tr>`;
+    return `<tr><td style="padding:10px 12px 10px 0;border-bottom:1px solid #e6dbd1;font-size:12px;color:#8a7570;white-space:nowrap">${esc(day(p.publish_date))}</td><td style="padding:10px 0;border-bottom:1px solid #e6dbd1;font-size:14px;color:#3a1c22"><b>${esc(p.title)}</b> <span style="color:#8a7570">· ${esc(p.format)}</span>${note}</td>${status}</tr>`;
   }).join("");
 
   let subject: string, intro: string, button: string;
@@ -95,13 +95,13 @@ export async function POST(req: Request) {
     button = "Open the studio";
   }
 
-  const html = `<div style="background:#f7f1e6;padding:30px 12px;font-family:Helvetica,Arial,sans-serif">
-<div style="max-width:560px;margin:auto;background:#fcfaf6;border:1px solid #e6dbd1;padding:30px">
+  const html = `<div style="background:#f8ece3;padding:30px 12px;font-family:Helvetica,Arial,sans-serif">
+<div style="max-width:560px;margin:auto;background:#fef8f3;border:1px solid #e6dbd1;padding:30px">
 <div style="font-size:10px;letter-spacing:2px;color:#967d79">${esc((clientName ? clientName + " · " : "").toUpperCase())}CONTENT ATELIER</div>
-<h1 style="font-family:Georgia,serif;font-weight:400;color:#4c1e2f;font-size:26px;margin:12px 0">${esc(subject)}</h1>
-<p style="font-size:14px;color:#35242b;line-height:1.5">${intro}</p>
+<h1 style="font-family:Georgia,serif;font-weight:400;color:#651321;font-size:26px;margin:12px 0">${esc(subject)}</h1>
+<p style="font-size:14px;color:#3a1c22;line-height:1.5">${intro}</p>
 <table style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
-<a href="${esc(appUrl)}" style="display:inline-block;background:#4c1e2f;color:#fffaf1;text-decoration:none;padding:12px 18px;font-size:12px;letter-spacing:1px;text-transform:uppercase">${button}</a>
+<a href="${esc(appUrl)}" style="display:inline-block;background:#651321;color:#fffaf1;text-decoration:none;padding:12px 18px;font-size:12px;letter-spacing:1px;text-transform:uppercase">${button}</a>
 </div></div>`;
   const text = `${subject}\n\n${posts.map(p => `- ${day(p.publish_date)}: ${p.title}${kind === "reviewed" ? ` — ${p.status}` : ""}${p.approval_note ? ` ("${p.approval_note}")` : ""}`).join("\n")}\n\n${appUrl}`;
 
