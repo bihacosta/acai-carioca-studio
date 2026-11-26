@@ -22,6 +22,7 @@ type Task = {
   created_at: string; sort_order?: number;
 };
 
+type AgencyRow = { agency_id:string; agency_name:string; owner_email:string|null; plan:string; created_at:string; clients:number; people:number; posts:number; last_activity:string|null };
 type Post = {
   id: string; title: string; image_url: string; publish_date: string | null;
   format: string; location: string; pillar: string; status: string;
@@ -81,6 +82,11 @@ export default function Home() {
   const [moreOpen,setMoreOpen] = useState(false);
   const [clientSheet,setClientSheet] = useState(false);
   const [noAccess,setNoAccess] = useState(false);
+  // Agency the signed-in person runs (owner/admin), and whether they own the platform.
+  const [agency,setAgency] = useState<{id:string;name:string;role:string}|null>(null);
+  const [platformAdmin,setPlatformAdmin] = useState(false);
+  const [agencyName,setAgencyName] = useState("");
+  const [overview,setOverview] = useState<AgencyRow[]|null>(null);
   const [team,setTeam] = useState<TeamRow[]>([]);
   const [grantRole,setGrantRole] = useState<Record<string,string>>({});
   const [invites,setInvites] = useState<{id:string;email:string;role:string;created_at:string}[]>([]);
@@ -181,6 +187,13 @@ export default function Home() {
       return;
     }
 
+    const [{data:agencyRows},{data:isAdmin}]=await Promise.all([
+      supabase.from("agency_members").select("role,agencies(id,name)").eq("user_id",userId),
+      supabase.rpc("is_platform_admin")
+    ]);
+    const myAgency=((agencyRows||[]) as any[]).filter(a=>a.agencies).sort((a,b)=>(a.role==="owner"?0:1)-(b.role==="owner"?0:1))[0];
+    const agencyNow=myAgency?{id:myAgency.agencies.id as string,name:myAgency.agencies.name as string,role:myAgency.role as string}:null;
+    setAgency(agencyNow);setPlatformAdmin(isAdmin===true);
     const list:Client[]=(memberships||[]).map((m:any)=>({id:m.workspace_id,role:m.role,name:m.workspaces?.name||"Client",logo_url:m.workspaces?.logo_url||null,voice_rules:m.workspaces?.voice_rules||[],locations:m.workspaces?.locations||[]})).sort((a,b)=>a.name.localeCompare(b.name));
     setClients(list);
     loadClientProfiles(list.map(c=>c.id));
@@ -189,7 +202,9 @@ export default function Home() {
     const linked=link.client&&list.some(c=>c.id===link.client)?link.client:null;
     if(linked)link.client=null;
     const wanted=preferredClient||openClientRef.current||linked;
-    if(!wanted&&list.length>1){
+    // An agency with no clients yet (just signed up) starts on the clients page, ready to add the first one.
+    if(!wanted&&(list.length>1||(list.length===0&&agencyNow))){
+      setNoAccess(false);
       setPicking(true);setWorkspaceId(null);setLoading(false);
       return;
     }
@@ -197,7 +212,7 @@ export default function Home() {
     const membership=chosen?{workspace_id:chosen.id,role:chosen.role}:null;
 
     if(!membership){
-      await supabase.rpc("request_access");
+      // Not on any client yet and no agency: offer to set up an agency (or wait for an invite).
       setNoAccess(true);
       setPosts([]);
       setTasks([]);
@@ -589,7 +604,24 @@ export default function Home() {
 
   const isApprover=role==="approver";
   const currentClient=clients.find(c=>c.id===workspaceId)||null;
-  const isPlatformOwner=clients.some(c=>c.role==="owner");
+  // Anyone who runs an agency can add clients to it.
+  const isPlatformOwner=!!agency;
+  async function setupAgency(e:React.FormEvent){
+    e.preventDefault();
+    if(!supabase||!session)return;
+    setBusy(true);setNotice("");
+    const {error}=await supabase.rpc("create_agency",{agency_name:agencyName.trim()});
+    if(error){setNotice(error.message);setBusy(false);return;}
+    setBusy(false);setAgencyName("");
+    await loadPosts(session.user.id);
+    setNotice("Your agency is ready. Add your first client.");
+  }
+  async function openOverview(){
+    if(!supabase)return;
+    const {data,error}=await supabase.rpc("platform_overview");
+    if(error){setNotice(error.message);return;}
+    setOverview((data||[]) as AgencyRow[]);
+  }
   const gridPosts=posts.filter(p=>p.on_grid!==false&&p.format!=="Story").sort((a,b)=>a.sort_order-b.sort_order);
   const drafts=posts.filter(p=>p.on_grid===false&&p.format!=="Story");
   const stories=posts.filter(p=>p.format==="Story");
@@ -630,7 +662,11 @@ export default function Home() {
   if(session&&loading&&!workspaceId&&!picking&&!noAccess)return splash;
   if(!session)return <main className="loginShell"><div className="loginCard"><div className="loginBrand"><img src="/brand/atelier-mark.png" alt=""/><span className="wordmark"><b>Content <i>Atelier</i></b></span></div><h1>Make room for<br/><i>good ideas.</i></h1><p className="muted">Your brand's visual workspace.</p><form onSubmit={authenticate} className="loginForm"><label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@yourbrand.com"/></label><label>Password<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label><button className="primary" disabled={busy}>{busy?"Please wait…":authMode==="login"?"Sign in":"Create account"}</button></form><div className="orDivider"><span>or</span></div><button type="button" className="googleButton" onClick={signInWithGoogle} disabled={busy}>Continue with Google</button><button className="textButton" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?"New to the studio? Create an account":"Already have an account? Sign in"}</button>{notice&&<p className="notice">{notice}</p>}<p className="muted legalLink"><a href="/privacy">Privacy Policy</a></p></div></main>;
 
-  if(noAccess)return <main className="loginShell"><div className="loginCard"><div className="loginBrand"><img src="/brand/atelier-mark.png" alt=""/><span className="wordmark"><b>Content <i>Atelier</i></b></span></div><h1>Almost<br/><i>there.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Your access request was sent to the workspace owner. Once it's approved, refresh this page to open the studio.</p><div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="primary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
+  if(noAccess)return <main className="loginShell"><div className="loginCard"><div className="loginBrand"><img src="/brand/atelier-mark.png" alt=""/><span className="wordmark"><b>Content <i>Atelier</i></b></span></div><h1>Set up your<br/><i>agency.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Give your agency a name to start adding clients and inviting your team. It's free.</p>
+    <form className="loginForm" onSubmit={setupAgency}><label>Agency name<input required maxLength={80} value={agencyName} onChange={e=>setAgencyName(e.target.value)} placeholder="e.g. Studio Maré"/></label><button className="primary" disabled={busy||!agencyName.trim()}>{busy?"Creating…":"Create my agency"}</button></form>
+    <p className="muted agencyInviteHint">Joining someone else's team? Ask them to invite <b>{session.user.email}</b>, then click “Check again”.</p>
+    {notice&&<p className="notice">{notice}</p>}
+    <div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="secondary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
 
   const weekEnd=new Date();weekEnd.setDate(weekEnd.getDate()+7);
   const localIso=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -655,9 +691,10 @@ export default function Home() {
     return <main className="pickerShell">
       <header className="pickerTop"><div className="brand"><img className="brandIcon" src="/brand/atelier-mark.png" alt=""/><div className="wordmark"><b>Content <i>Atelier</i></b><small>Content planning</small></div></div><button className="textButton" onClick={()=>supabase?.auth.signOut()}><LogOut size={15}/> Sign out</button></header>
       <section className="pickerBody">
-        <p className="pickerHello">{greeting}.</p>
+        <p className="pickerHello">{greeting}.{agency&&<span className="pickerAgency"> · {agency.name}</span>}</p>
         <h1>Today in <i>the atelier.</i></h1>
-        <p className="muted pickerLead">Choose a client to open their feed, calendar and approvals.</p>
+        <p className="muted pickerLead">{clients.length?"Choose a client to open their feed, calendar and approvals.":"Add your first client to start planning their content."}</p>
+        {platformAdmin&&<button className="secondary compact pickerAdmin" onClick={openOverview}><Users size={15}/> Agencies on the platform</button>}
         <div className="pickerGrid">
           {clients.map((c,idx)=>{const prof=clientProfiles[c.id];const lead=prof?.brand_colors?.[0]||"#651321";const manage=c.role==="owner"||c.role==="admin";return <article key={c.id} className="swatchCard" style={{animationDelay:`${idx*60}ms`}}>
             <button className="swatchOpen" onClick={()=>switchClient(c.id)} disabled={loading} aria-label={`Open ${c.name}`}>
@@ -673,6 +710,14 @@ export default function Home() {
         </div>
       </section>
       {studioView}
+      {overview&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setOverview(null);}}><div className="modal overviewModal" role="dialog" aria-label="Agencies on the platform">
+        <div className="modalHead"><div><p className="eyebrow">Only you see this</p><h2>Agencies on the platform</h2></div><button className="iconButton" aria-label="Close" onClick={()=>setOverview(null)}><X size={18}/></button></div>
+        <div className="stats overviewStats"><div><b>{overview.length}</b><small>agencies</small></div><div><b>{overview.reduce((n,a)=>n+Number(a.clients),0)}</b><small>clients</small></div><div><b>{overview.reduce((n,a)=>n+Number(a.posts),0)}</b><small>posts</small></div></div>
+        <div className="overviewTable"><table><thead><tr><th>Agency</th><th>Owner</th><th>Plan</th><th>Joined</th><th>Clients</th><th>People</th><th>Posts</th><th>Last post</th></tr></thead><tbody>
+          {overview.map(a=><tr key={a.agency_id}><td><b>{a.agency_name}</b></td><td>{a.owner_email||"—"}</td><td>{a.plan==="free"?"Free":a.plan}</td><td>{new Date(a.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</td><td>{a.clients}</td><td>{a.people}</td><td>{a.posts}</td><td>{a.last_activity?new Date(a.last_activity).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"—"}</td></tr>)}
+        </tbody></table></div>
+        <p className="muted overviewNote">Numbers only. You don't see the agencies' content.</p>
+      </div></div>}
       {notice&&<div className="noticeBar" role="status" onClick={()=>setNotice("")}>{notice}<X size={14}/></div>}
     </main>;
   }

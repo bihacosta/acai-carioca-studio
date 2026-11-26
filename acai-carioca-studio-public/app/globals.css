@@ -1016,3 +1016,16 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .approvedGroup .changesHead,.approvedGroup .changesHead b{color:#4d6a2c}
 .approvedGroup li{border-color:#dfe6d3}
 .approvedGroup .textButton{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+
+/* Agencies: sign-up screen, agency name on the clients page, platform overview */
+.agencyInviteHint{font-size:13px;margin-top:18px}
+.pickerAgency{color:var(--wine)}
+.pickerAdmin{margin:-8px 0 24px;display:inline-flex;align-items:center;gap:6px}
+.overviewModal{max-width:980px;width:min(980px,calc(100vw - 32px))}
+.overviewStats{margin:4px 0 18px}
+.overviewTable{overflow-x:auto;border:1px solid var(--line,#eadbd2);border-radius:12px}
+.overviewTable table{width:100%;border-collapse:collapse;font-size:13px}
+.overviewTable th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line,#eadbd2);white-space:nowrap}
+.overviewTable td{padding:10px 12px;border-bottom:1px solid #f1e7df;white-space:nowrap}
+.overviewTable tr:last-child td{border-bottom:0}
+.overviewNote{font-size:12px;margin-top:12px}
