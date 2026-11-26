@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor, closestCorners, pointerWithin, useDroppable,
+  DndContext, DragOverlay, MouseSensor, TouchSensor, KeyboardSensor, closestCorners, pointerWithin, useDroppable,
   useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragOverEvent, type DragStartEvent,
   type DropAnimation, defaultDropAnimationSideEffects
 } from "@dnd-kit/core";
@@ -77,8 +77,8 @@ export default function TaskBoard<T extends BoardTask>({ tasks, disabled = false
   useEffect(() => { if (!activeId) setCols(group(tasks)); }, [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
   const byId = new Map(tasks.map(t => [t.id, t]));

@@ -92,6 +92,7 @@ export default function Home() {
   const linkRef = useRef<{client:string|null;view:string|null}|null>(null);
   const [reviewNote,setReviewNote] = useState("");
   const [loading,setLoading] = useState(true);
+  const [authReady,setAuthReady] = useState(false);
   const [busy,setBusy] = useState(false);
   const [notice,setNotice] = useState("");
   const [search,setSearch] = useState("");
@@ -114,6 +115,7 @@ export default function Home() {
 
     supabase.auth.getSession().then(({data,error})=>{
       if(!active)return;
+      setAuthReady(true);
       if(error){setNotice(error.message);setLoading(false);return;}
       setSession(data.session);
       if(data.session) loadPosts(data.session.user.id);
@@ -601,6 +603,10 @@ export default function Home() {
 
   if(!supabase)return <main className="setup"><div className="setupCard"><p className="eyebrow">Content Atelier</p><h1>Welcome to your<br/><i>creative studio.</i></h1><p className="muted">The app is ready. Connect your Supabase project to activate team login, shared storage and the live content calendar.</p><div className="setupSteps"><b>1. Create a Supabase project</b><span>2. Run the included database.sql</span><span>3. Create the storage bucket: creative-assets</span><span>4. Add the keys to .env.local</span><span>5. Deploy to Vercel</span></div><p className="hint">See SETUP.md in the project folder for the full setup guide.</p></div></main>;
 
+  // Calm splash while we check the sign-in and open the right client (no flash of the login or an empty workspace).
+  const splash=<main className="bootSplash" aria-busy="true" aria-label="Opening Content Atelier"><img src="/brand/atelier-mark.png" alt=""/><span className="wordmark"><b>Content <i>Atelier</i></b></span></main>;
+  if(!authReady)return splash;
+  if(session&&loading&&!workspaceId&&!picking&&!noAccess)return splash;
   if(!session)return <main className="loginShell"><div className="loginCard"><div className="loginBrand"><img src="/brand/atelier-mark.png" alt=""/><span className="wordmark"><b>Content <i>Atelier</i></b></span></div><h1>Make room for<br/><i>good ideas.</i></h1><p className="muted">Your brand's visual workspace.</p><form onSubmit={authenticate} className="loginForm"><label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@yourbrand.com"/></label><label>Password<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label><button className="primary" disabled={busy}>{busy?"Please wait…":authMode==="login"?"Sign in":"Create account"}</button></form><div className="orDivider"><span>or</span></div><button type="button" className="googleButton" onClick={signInWithGoogle} disabled={busy}>Continue with Google</button><button className="textButton" onClick={()=>setAuthMode(authMode==="login"?"signup":"login")}>{authMode==="login"?"New to the studio? Create an account":"Already have an account? Sign in"}</button>{notice&&<p className="notice">{notice}</p>}<p className="muted legalLink"><a href="/privacy">Privacy Policy</a></p></div></main>;
 
   if(noAccess)return <main className="loginShell"><div className="loginCard"><div className="loginBrand"><img src="/brand/atelier-mark.png" alt=""/><span className="wordmark"><b>Content <i>Atelier</i></b></span></div><h1>Almost<br/><i>there.</i></h1><p className="muted">You're signed in as <b>{session.user.email}</b>. Your access request was sent to the workspace owner. Once it's approved, refresh this page to open the studio.</p><div className="modalActions waitingActions"><button className="secondary" onClick={()=>supabase?.auth.signOut()}>Sign out</button><button className="primary" onClick={()=>loadPosts(session.user.id)}>Check again</button></div></div></main>;
@@ -691,7 +697,7 @@ export default function Home() {
             </div></div>
             {feedMode==="stories"?<StoriesView stories={stories as any} canEdit={!isApprover} onOpen={p=>openEdit(p as Post)} onAdd={date=>openNew({format:"Story",date})}/>
             :<>{gridPosts.length===0&&drafts.length===0?<div className="empty"><Images size={28}/><h3>A blank canvas.</h3><p>Upload your first creative to begin building the grid.</p>{!isApprover&&<button className="primary" onClick={()=>openNew()}><Plus size={16}/> Add your first post</button>}</div>
-            :<><p className="muted feedHint">{isApprover?"Tap a post to preview it.":"Drag to rearrange, or drag a draft onto the grid."}</p>
+            :<><p className="muted feedHint">{isApprover?"Tap a post to preview it.":<><span className="deskOnly">Drag to rearrange, or drag a draft onto the grid.</span><span className="phoneText">Press and hold a post to move it.</span></>}</p>
             <FeedGrid fallbackLogo={currentClient?.logo_url||null} posts={gridPosts} drafts={isApprover?[]:drafts} disabled={isApprover} mode={feedMode==="phone"?"phone":"grid"} profile={profile} showColors={showColors} onOpen={p=>openEdit(p as Post)} onReorder={saveOrder} onPlaceDraft={placeDraft} onMoveToDrafts={moveToDrafts}/></>}</>}</>}
           {view==="calendar"&&<><div className="sectionHead"><div><h2>Monthly overview</h2></div><input className="monthInput" type="month" value={month} onChange={e=>setMonth(e.target.value)}/></div>
             {!isApprover&&<p className="muted feedHint">Drag a post to another day to change its date.</p>}

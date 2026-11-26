@@ -939,3 +939,10 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
   .inviteForm select{flex:1}
   .teamRow{gap:10px;padding:12px}
 }
+/* Start-up splash */
+.bootSplash{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg)}
+.bootSplash img{width:64px;height:64px;animation:bootPulse 1.4s var(--ease) infinite alternate}
+.bootSplash .wordmark b{font:400 24px var(--display);color:var(--wine)}
+@keyframes bootPulse{from{opacity:.55;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.phoneText{display:none}
+@media(max-width:760px){.phoneText{display:inline}}
