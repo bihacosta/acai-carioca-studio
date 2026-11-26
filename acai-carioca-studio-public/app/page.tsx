@@ -402,7 +402,8 @@ export default function Home() {
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){setNotice("Type a valid email address.");return;}
     if(team.some(t=>!t.pending&&t.email?.toLowerCase()===email)){setNotice(`${email} already has access to this client.`);return;}
     setBusy(true);setNotice("");
-    const {error}=await supabase.from("workspace_invites").upsert({workspace_id:workspaceId,email,role:inviteRole,invited_by:session.user.id},{onConflict:"workspace_id,email"});
+    const existing=invites.find(i=>i.email===email);
+    const {error}=existing?await supabase.from("workspace_invites").update({role:inviteRole}).eq("id",existing.id):await supabase.from("workspace_invites").insert({workspace_id:workspaceId,email,role:inviteRole,invited_by:session.user.id});
     if(error)setNotice("Could not save the invite: "+error.message);
     else{
       // Someone who already signed in and is waiting can be let in right away.
