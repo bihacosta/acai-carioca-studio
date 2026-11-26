@@ -109,7 +109,7 @@ export default function InstagramPanel({ workspaceId, clientName, canConnect, ca
       <p>Connect the Instagram account to bring in the published posts with their likes, comments, reach and views, right next to the plan.</p>
       {canConnect ? <button className="primary" disabled={!!busy} onClick={connect}><Instagram size={16} /> {busy === "connect" ? "Opening Instagram…" : "Connect Instagram"}</button>
         : <p className="muted">Ask the client's owner or an admin to connect it.</p>}
-      <small>You’ll sign in with Facebook and pick the Instagram account. Works with Business and Creator accounts. Content Atelier only reads posts and numbers; it doesn’t post anything.</small>
+      <small>You’ll sign in with Facebook and pick the Instagram account. Works with Business and Creator accounts. Content Atelier reads posts and numbers, and only posts when someone on your team clicks “Publish to Instagram” on an approved post.</small>
     </div>
   );
 
