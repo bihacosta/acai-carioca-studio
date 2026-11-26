@@ -848,3 +848,9 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .kitFileActions .statusPill{margin-right:auto}
 .kitFileActions .iconButton{display:inline-grid;place-items:center;padding:7px 9px;color:var(--wine);text-decoration:none}
 .kitFileActions .kitDanger{background:#f6e6df;color:#8d4138;font-size:12px;font-weight:600}
+/* Team invites */
+.inviteForm{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.inviteForm input{flex:1;min-width:220px;border:1px solid var(--hair2);border-radius:var(--r-sm);background:var(--surface);padding:11px 12px;font:400 15px var(--ui);color:var(--ink)}
+.inviteForm input:focus{outline:none;border-color:var(--wine2);box-shadow:0 0 0 3px var(--tint)}
+.inviteForm select{border:1px solid var(--hair2);border-radius:var(--r-sm);background:var(--surface);padding:10px 12px;font:500 14px var(--ui);color:var(--ink)}
+.inviteList{margin-bottom:6px}

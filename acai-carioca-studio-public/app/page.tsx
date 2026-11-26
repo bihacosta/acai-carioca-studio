@@ -80,6 +80,9 @@ export default function Home() {
   const [noAccess,setNoAccess] = useState(false);
   const [team,setTeam] = useState<TeamRow[]>([]);
   const [grantRole,setGrantRole] = useState<Record<string,string>>({});
+  const [invites,setInvites] = useState<{id:string;email:string;role:string;created_at:string}[]>([]);
+  const [inviteEmail,setInviteEmail] = useState("");
+  const [inviteRole,setInviteRole] = useState("viewer");
   const [reviewStart,setReviewStart] = useState(nextMonday());
   const [changesFor,setChangesFor] = useState<string|null>(null);
   const [browseDates,setBrowseDates] = useState(false);
@@ -150,6 +153,8 @@ export default function Home() {
     setLoading(true);
     setNotice("");
 
+    // Join any client this email was invited to (by an owner/admin) before reading memberships.
+    await supabase.rpc("accept_invites");
     const {data:memberships,error:memberError}=await supabase
       .from("workspace_members")
       .select("workspace_id,role,workspaces(id,name,logo_url,voice_rules,locations)")
@@ -387,6 +392,35 @@ export default function Home() {
     const id=ws||workspaceId;if(!id)return;
     const {data,error}=await supabase.rpc("list_team",{target_workspace:id});
     if(error)setNotice("Could not load your team: "+error.message);else setTeam((data||[]) as TeamRow[]);
+    const {data:inv}=await supabase.from("workspace_invites").select("id,email,role,created_at").eq("workspace_id",id).order("created_at",{ascending:false});
+    setInvites((inv||[]) as any);
+  }
+  async function sendInvite(e:React.FormEvent){
+    e.preventDefault();
+    if(!supabase||!workspaceId||!session)return;
+    const email=inviteEmail.trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){setNotice("Type a valid email address.");return;}
+    if(team.some(t=>!t.pending&&t.email?.toLowerCase()===email)){setNotice(`${email} already has access to this client.`);return;}
+    setBusy(true);setNotice("");
+    const {error}=await supabase.from("workspace_invites").upsert({workspace_id:workspaceId,email,role:inviteRole,invited_by:session.user.id},{onConflict:"workspace_id,email"});
+    if(error)setNotice("Could not save the invite: "+error.message);
+    else{
+      // Someone who already signed in and is waiting can be let in right away.
+      const waiting=team.find(t=>t.pending&&t.email?.toLowerCase()===email);
+      if(waiting){await setMemberRole(waiting,inviteRole);await supabase.from("workspace_invites").delete().eq("workspace_id",workspaceId).eq("email",email);}
+      else setNotice(`Invite saved. Send ${email} the link ${location.origin} and ask them to sign in with this email. They'll go straight to ${currentClient?.name||"this client"}.`);
+      setInviteEmail("");await loadTeam();
+    }
+    setBusy(false);
+  }
+  async function cancelInvite(id:string){
+    if(!supabase)return;
+    const {error}=await supabase.from("workspace_invites").delete().eq("id",id);
+    if(error)setNotice("Could not cancel the invite: "+error.message);else{setInvites(cur=>cur.filter(i=>i.id!==id));setNotice("Invite cancelled.");}
+  }
+  function copyInvite(email:string){
+    const text=`You're invited to ${currentClient?.name||"our"} workspace on Content Atelier. Open ${location.origin} and sign in with ${email}.`;
+    navigator.clipboard?.writeText(text).then(()=>setNotice("Invite message copied. Paste it in an email or text."));
   }
   async function setMemberRole(person:TeamRow,newRole:string){
     if(!supabase)return;
@@ -695,8 +729,11 @@ export default function Home() {
             {browseDates&&reviewed.length>0&&<><div className="sectionHead reviewedHead"><div><p className="eyebrow">Also in these two weeks</p><h2>Other content</h2></div></div><div className="libraryList">{reviewed.map(p=><div className="libraryItem" key={p.id}><img src={p.image_url}/><div className="libraryInfo"><b>{p.title}</b><small>{prettyDate(p.publish_date)} · {p.format}{p.approval_note?" · “"+p.approval_note+"”":""}</small></div><span className={"statusPill"+(p.status==="Approved"?" ok":p.status==="Changes requested"?" warn":"")}>{p.status}</span><button className="iconButton" onClick={()=>openEdit(p)}>{isApprover?"View":"Edit"}</button></div>)}</div></>}
           </>}
           {view==="team"&&canManage&&<>
-            <div className="sectionHead"><div><p className="eyebrow">Waiting for you</p><h2>Access requests</h2></div><span className="muted">People who signed in and asked to join</span></div>
-            {pendingPeople.length===0?<div className="empty teamEmpty"><UserPlus size={26}/><h3>No pending requests.</h3><p>Share the studio link. When someone signs in (with Google or email), they will show up here for you to approve.</p></div>:
+            <div className="sectionHead"><div><p className="eyebrow">Bring someone in</p><h2>Invite to {currentClient?.name||"this client"}</h2></div><span className="muted">They join this client as soon as they sign in with this email</span></div>
+            <form className="inviteForm" onSubmit={sendInvite}><input type="email" required value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="name@email.com" aria-label="Email to invite"/><select aria-label="Role for the invite" value={inviteRole} onChange={e=>setInviteRole(e.target.value)}>{roleOptions.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select><button className="primary" disabled={busy}><UserPlus size={15}/> Invite</button></form>
+            {invites.length>0&&<div className="teamList inviteList">{invites.map(i=><div className="teamRow inviteRow" key={i.id}><span className="avatar">{i.email[0]?.toUpperCase()}</span><div className="teamInfo"><b>{i.email}</b><small><Mail size={11}/> Invited {new Date(i.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})} · hasn't signed in yet</small></div><span className="statusPill">{roleOptions.find(r=>r.value===i.role)?.label||i.role}</span><button className="iconButton" onClick={()=>copyInvite(i.email)}>Copy message</button><button className="iconButton" onClick={()=>cancelInvite(i.id)}>Cancel</button></div>)}</div>}
+            <div className="sectionHead reviewedHead"><div><p className="eyebrow">Waiting for you</p><h2>Access requests</h2></div><span className="muted">People who signed in without an invite</span></div>
+            {pendingPeople.length===0?<div className="empty teamEmpty"><UserPlus size={26}/><h3>No pending requests.</h3><p>Invite people above so they land in the right client. Anyone who signs in without an invite shows up here.</p></div>:
             <div className="teamList">{pendingPeople.map(p=><div className="teamRow pendingRow" key={p.user_id}><span className="avatar">{p.email?.[0]?.toUpperCase()}</span><div className="teamInfo"><b>{p.email}</b><small><Clock size={11}/> Requested {new Date(p.since).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</small></div><select aria-label="Role" value={grantRole[p.user_id]||"editor"} onChange={e=>setGrantRole({...grantRole,[p.user_id]:e.target.value})}>{roleOptions.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select><button className="primary" disabled={busy} onClick={()=>setMemberRole(p,grantRole[p.user_id]||"editor")}><Check size={15}/> Give access</button><button className="iconButton" disabled={busy} onClick={()=>dismissRequest(p)}>Decline</button></div>)}</div>}
             <div className="sectionHead reviewedHead"><div><p className="eyebrow">With access</p><h2>Members</h2></div></div>
             <div className="teamList">{members.map(m=><div className="teamRow" key={m.user_id}><span className="avatar">{m.email?.[0]?.toUpperCase()}</span><div className="teamInfo"><b>{m.email}{m.user_id===session.user.id?" (you)":""}</b><small>Member since {new Date(m.since).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</small></div>{m.role==="owner"||m.user_id===session.user.id?<span className="statusPill">{m.role}</span>:<><select aria-label="Role" value={m.role||""} disabled={busy} onChange={e=>setMemberRole(m,e.target.value)}>{roleOptions.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select><button className="iconButton" disabled={busy} onClick={()=>removeMember(m)}>Remove</button></>}</div>)}</div>
