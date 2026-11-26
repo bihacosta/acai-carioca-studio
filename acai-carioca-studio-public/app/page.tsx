@@ -99,6 +99,8 @@ export default function Home() {
   const [modal,setModal] = useState(false);
   const [editing,setEditing] = useState<Post|null>(null);
 
+  // Each page starts at the top (phones keep the old scroll position otherwise).
+  useEffect(()=>{window.scrollTo({top:0,left:0,behavior:"instant" as ScrollBehavior});},[view,workspaceId]);
   useEffect(()=>{
     if(!notice)return;
     const t=setTimeout(()=>setNotice(""),notice.length>90?8000:4500);
