@@ -164,3 +164,7 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
   - `client_profiles`: team members of a client can read it; only owners/admins can edit.
   - `client_accounts`: only owners/admins can see or edit.
   - owners/admins can update a client's `name` and `logo_url`. RLS stays on for every table.
+## 18. Reel video link
+- Reels have a "Video link" field in the post editor. The approver sees a "Watch the video" button on the approval card
+  and in the post preview; it opens the link in a new tab. Make sure the link is shared (e.g. "Anyone with the link").
+- Database: `supabase/add-reel-video-link.sql` adds `posts.video_url` (already applied).
