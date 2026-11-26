@@ -174,3 +174,19 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
   App icons: `app/icon.png`, `app/apple-icon.png`.
 - Colours (in `app/globals.css`): burgundy `#651321`, lighter burgundy `#892238`, deep `#560a1e`, rose `#e4a6a3`,
   blush `#f3cdc9`, cream background `#fbf4ee` / `#fef8f3`. Main buttons use the logo's burgundy gradient.
+
+## 20. Publish to Instagram (approved posts)
+- In the post editor, posts with status **Approved** or **Scheduled** show a **Publish to Instagram** button
+  (owners, admins and editors; the client's Instagram must be connected). Click once, then again to confirm.
+  It publishes the *saved* version of the post, then marks it as **Published** and refreshes the Live tab.
+- Works for Post (1 photo), Carousel (up to 10 photos), Story (photo) and Reel. Flyers are not published.
+- Photos: Instagram only accepts JPEG between 4:5 (tall) and 1.91:1 (wide). When needed, the app makes a JPEG copy,
+  cropped around the framing set in the editor, in the uploader's folder of `creative-assets` (`<user id>/instagram/`).
+- Reels: Instagram downloads the video itself, so the video link must point to the file. Dropbox links work;
+  Google Drive, YouTube, Vimeo, Canva and Frame.io links don't. Longer videos may take a minute or two to process.
+- **Meta setup (once):** in developers.facebook.com → the app → Facebook Login for Business → Configurations,
+  add the permission **instagram_content_publish** to the configuration used by `INSTAGRAM_CONFIG_ID`.
+  Then, in Content Atelier, disconnect and connect Instagram again so the new permission is granted.
+  For clients outside the app's own roles (e.g. not testers/admins of the Meta app), Meta needs to approve
+  this permission in **App Review**.
+- No database changes. Code: `lib/instagram-publish.ts`, `app/api/instagram/publish/route.ts`, `app/PostEditor.tsx`.

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { uploadImage } from "@/lib/media";
-import { X, Upload, MessageSquare, Hash, FileText, Trash2, ChevronLeft, ChevronRight, Plus, Move, Send, Play } from "lucide-react";
+import { X, Upload, MessageSquare, Hash, FileText, Trash2, ChevronLeft, ChevronRight, Plus, Move, Send, Play, Instagram } from "lucide-react";
 
 export type EditorPost = {
   id: string; title: string; image_url: string; publish_date: string | null; format: string; location: string;
@@ -15,6 +15,15 @@ export type Snippet = { id: string; kind: "caption" | "hashtags"; name: string; 
 type Comment = { id: string; author_id: string; author_email: string | null; body: string; created_at: string };
 
 const CAPTION_LIMIT = 2200, HASHTAG_LIMIT = 30;
+const PUBLISHABLE = ["Approved", "Scheduled"];
+
+async function callApi(path: string, body: object) {
+  const { data: { session } } = await supabase!.auth.getSession();
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` }, body: JSON.stringify(body) });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || "Something went wrong.");
+  return out;
+}
 const formats = ["Post", "Reel", "Carousel", "Story", "Flyer"];
 const pillars = ["Product", "Lifestyle", "Promotion", "Brand Awareness", "Community"];
 
@@ -114,6 +123,34 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
   const [snippetMenu, setSnippetMenu] = useState<"caption" | "hashtags" | null>(null);
   const captionRef = useRef<HTMLTextAreaElement>(null);
   const readOnly = isApprover;
+  const [igUser, setIgUser] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState("");
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  const canPublish = !readOnly && !!post && PUBLISHABLE.includes(post.status) && post.format !== "Flyer" && !!igUser;
+
+  useEffect(() => {
+    if (!supabase || readOnly || !post || !PUBLISHABLE.includes(post.status)) return;
+    supabase.from("instagram_connections").select("username").eq("workspace_id", workspaceId).maybeSingle()
+      .then(({ data }) => setIgUser(data?.username || null));
+  }, [workspaceId, post, readOnly]);
+
+  async function publish() {
+    if (!post || publishing) return;
+    if (!confirmPublish) { setConfirmPublish(true); setTimeout(() => setConfirmPublish(false), 4000); return; }
+    setConfirmPublish(false); setError(""); setPublishing("Publishing…");
+    try {
+      let containerId: string | undefined;
+      for (let round = 0; round < 8; round++) {
+        const r = await callApi("/api/instagram/publish", { workspaceId, postId: post.id, containerId });
+        if (r.status === "published") { onSaved(`Published on Instagram (@${igUser}).`); return; }
+        containerId = r.containerId; setPublishing("Instagram is processing the video…");
+      }
+      throw new Error("Instagram is still processing the video. Try “Publish” again in a few minutes.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Couldn't publish on Instagram.");
+      setPublishing("");
+    }
+  }
 
   useEffect(() => () => { images.forEach(i => i.file && URL.revokeObjectURL(i.url)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -302,8 +339,12 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
             <button type="button" className="secondary" onClick={onClose}>Close</button>
             {post?.status === "Awaiting approval" && <button type="button" className="primary" onClick={onOpenApprovals}>Review in Approvals</button>}
           </> : <>
+            {canPublish && <button type="button" className="secondary igPublish" disabled={busy || !!publishing} onClick={publish}
+              title={`Publishes the saved version of this post on @${igUser}`}>
+              <Instagram size={15} /> {publishing || (confirmPublish ? `Post on @${igUser} now?` : "Publish to Instagram")}
+            </button>}
             <button type="button" className="secondary" onClick={onClose}>Cancel</button>
-            <button className="primary" disabled={busy}>{busy ? "Saving…" : post ? "Save changes" : onGrid ? "Add to studio" : "Save draft"}</button>
+            <button className="primary" disabled={busy || !!publishing}>{busy ? "Saving…" : post ? "Save changes" : onGrid ? "Add to studio" : "Save draft"}</button>
           </>}
         </div>
       </form>

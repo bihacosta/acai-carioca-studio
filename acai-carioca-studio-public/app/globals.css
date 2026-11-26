@@ -994,3 +994,6 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
   .igEmpty{padding:30px 18px}
   .segmented button{padding:7px 6px;font-size:12.5px;gap:4px}
 }
+
+/* Publish to Instagram button (post editor) */
+.modalActions{flex-wrap:wrap}.modalActions .igPublish{margin-right:auto}

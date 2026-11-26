@@ -52,6 +52,15 @@ export default function PrivacyPage() {
           except the service providers that run the Studio for us.
         </p>
 
+        <h2>Instagram data</h2>
+        <p>
+          When a client&apos;s owner or admin connects an Instagram professional account (through Facebook
+          Login), we store an encrypted access key for that account. We use it to read the account&apos;s
+          published posts and their numbers (likes, comments, reach, views, saves and shares), and to
+          publish a post only when a team member clicks &ldquo;Publish to Instagram&rdquo; on an approved
+          post. Disconnecting the account deletes the access key.
+        </p>
+
         <h2>Google user data</h2>
         <p>
           The Studio requests only the basic Google sign-in information listed above (name, email and
