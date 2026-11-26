@@ -235,7 +235,7 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
         </div>
 
         {post?.approval_note && <div className={"feedbackBox" + (post.status === "Changes requested" ? " changes" : "")}><MessageSquare size={15} /><div>
-          <b>Approver feedback{post.reviewed_at ? " · " + new Date(post.reviewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</b>
+          <b>{post.status === "Changes requested" ? "Changes requested: what to change" : "Approver feedback"}{post.reviewed_at ? " · " + new Date(post.reviewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</b>
           <p>{post.approval_note}</p>{!readOnly && post.status === "Changes requested" && <small>After updating, set the status back to “Awaiting approval”.</small>}
         </div></div>}
 

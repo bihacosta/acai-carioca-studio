@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 type Post = {
   id: string; title: string; publish_date: string | null; format: string;
-  status: string; approval_note: string | null;
+  status: string; approval_note: string | null; image?: string | null;
 };
 
 const day = (iso: string | null) =>
@@ -56,10 +56,11 @@ export async function POST(req: Request) {
   let posts: Post[] = [];
   if (ids.length) {
     const { data: postsData, error: postsError } = await supabase
-      .from("posts").select("id,title,publish_date,format,status,approval_note").in("id", ids)
+      .from("posts").select("id,title,publish_date,format,status,approval_note,image_url,cover_url").in("id", ids)
       .order("publish_date", { ascending: true });
     if (postsError) return NextResponse.json({ error: postsError.message }, { status: 400 });
-    posts = (postsData || []) as Post[];
+    posts = ((postsData || []) as (Post & { image_url: string | null; cover_url: string | null })[])
+      .map(p => ({ ...p, image: (p.format === "Reel" && p.cover_url) || p.image_url || null }));
   }
   if (emailIds.length) {
     const { data: emailData, error: emailError } = await supabase
@@ -92,7 +93,13 @@ export async function POST(req: Request) {
 
   const html = reviewEmail({
     appUrl, link, clientName: clientName || "Your client", clientLogo, clientColor, kind, subject, introHtml: intro, sender,
-    items: posts.map(p => ({ title: p.title, date: day(p.publish_date), format: p.format, status: p.status, note: p.approval_note }))
+    items: posts.map(p => ({
+      title: p.title, date: day(p.publish_date), format: p.format, status: p.status, note: p.approval_note,
+      image: p.image && /^https:\/\//i.test(p.image) ? p.image : null,
+      // Each item opens straight in the studio: posts open in the editor, emails open the Email tab.
+      link: workspaceId && /^[0-9a-f-]{36}$/i.test(workspaceId) && /^[0-9a-f-]{36}$/i.test(p.id)
+        ? `${appUrl}/?client=${workspaceId}${p.format === "Email" ? "&view=email" : `&post=${p.id}`}` : null
+    }))
   });
   const text = `${subject}\n\n${posts.map(p => `- ${day(p.publish_date)}: ${p.title}${kind === "reviewed" ? ` — ${p.status}` : ""}${p.approval_note ? ` ("${p.approval_note}")` : ""}`).join("\n")}\n\n${link}`;
 
