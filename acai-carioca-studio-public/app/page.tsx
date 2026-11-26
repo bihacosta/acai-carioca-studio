@@ -12,8 +12,9 @@ import TaskBoard from "./TaskBoard";
 import ReviewMedia from "./ReviewMedia";
 import ClientStudio, { type ClientProfile } from "./ClientStudio";
 import BrandKit from "./BrandKit";
+import InstagramPanel from "./InstagramPanel";
 import EmailPlanner, { type EmailCampaign, seriesLabel } from "./EmailPlanner";
-import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail, Link2, MoreHorizontal, Palette, Smartphone, Film, ChevronDown, Play, BookMarked } from "lucide-react";
+import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail, Link2, MoreHorizontal, Palette, Smartphone, Film, ChevronDown, Play, BookMarked, Instagram } from "lucide-react";
 
 type Task = {
   id: string; title: string; details: string | null; list_name: string; due_date: string | null;
@@ -71,7 +72,8 @@ export default function Home() {
   const openClientRef = useRef<string|null>(null);
   const [selected,setSelected] = useState<string[]>([]);
   const [bulkStatus,setBulkStatus] = useState("Published");
-  const [feedMode,setFeedMode] = useState<"grid"|"phone"|"stories">("grid");
+  const [feedMode,setFeedMode] = useState<"grid"|"phone"|"stories"|"instagram">("grid");
+  const [igReturn,setIgReturn] = useState<{code?:string|null;state?:string|null;error?:string|null}|null>(null);
   const [showColors,setShowColors] = useState(false);
   const [snippets,setSnippets] = useState<Snippet[]>([]);
   const [profile,setProfile] = useState<{title:string;subtitle?:string|null;avatar_url?:string|null;instagram_handle?:string|null;website?:string|null;highlights?:string[]|null}>({title:""});
@@ -89,7 +91,7 @@ export default function Home() {
   const [browseDates,setBrowseDates] = useState(false);
   const [sessionReviewed,setSessionReviewed] = useState<{id:string;title:string;decision:string}[]>([]);
   const [leaving,setLeaving] = useState<string[]>([]);
-  const linkRef = useRef<{client:string|null;view:string|null}|null>(null);
+  const linkRef = useRef<{client:string|null;view:string|null;ig?:{code:string|null;state:string|null;error:string|null}|null}|null>(null);
   const [reviewNote,setReviewNote] = useState("");
   const [loading,setLoading] = useState(true);
   const [authReady,setAuthReady] = useState(false);
@@ -147,8 +149,10 @@ export default function Home() {
 
   function linkTarget(){
     if(linkRef.current===null){
-      try{const q=new URLSearchParams(window.location.search);linkRef.current={client:q.get("client"),view:q.get("view")};
-        if(q.get("client")||q.get("view"))window.history.replaceState(null,"",window.location.pathname);}
+      try{const q=new URLSearchParams(window.location.search);
+        const ig=q.get("ig_code")||q.get("ig_error")?{code:q.get("ig_code"),state:q.get("ig_state"),error:q.get("ig_error")}:null;
+        linkRef.current={client:q.get("client"),view:q.get("view"),ig};
+        if(q.get("client")||q.get("view")||ig)window.history.replaceState(null,"",window.location.pathname);}
       catch{linkRef.current={client:null,view:null};}
     }
     return linkRef.current;
@@ -208,6 +212,7 @@ export default function Home() {
     if(membership.role==="owner"||membership.role==="admin")loadTeam(membership.workspace_id);else setTeam([]);
     if(membership.role==="approver")setView("approvals");
     if(link.view==="approvals"){setView("approvals");setBrowseDates(false);link.view=null;}
+    if(link.view==="instagram"){setView("feed");setFeedMode("instagram");link.view=null;if(link.ig){setIgReturn(link.ig);link.ig=null;}}
 
     const {data,error}=await supabase
       .from("posts")
@@ -618,7 +623,7 @@ export default function Home() {
   const nextPostLabel=(()=>{if(!upcoming.length)return "—";const d=Math.round((new Date(upcoming[0]+"T12:00:00").getTime()-new Date(todayIso+"T12:00:00").getTime())/86400000);return d===0?"Today":d===1?"Tomorrow":`${d} days`;})();
   const weekCount=posts.filter(p=>p.publish_date&&p.publish_date>=todayIso&&p.publish_date<=weekIso).length;
   const awaitingAll=posts.filter(p=>p.status==="Awaiting approval").length;
-  const pageContext=view==="feed"?(feedMode==="stories"?(n=>`${n} ${n===1?"story":"stories"}`)(posts.filter(p=>p.format==="Story").length):`${gridPosts.length} on the grid · ${plural(drafts.length,"draft")}`)
+  const pageContext=view==="feed"?(feedMode==="instagram"?"Published posts and their numbers":feedMode==="stories"?(n=>`${n} ${n===1?"story":"stories"}`)(posts.filter(p=>p.format==="Story").length):`${gridPosts.length} on the grid · ${plural(drafts.length,"draft")}`)
     :view==="calendar"?`${plural(posts.filter(p=>p.publish_date&&p.publish_date>=todayIso&&p.publish_date<=weekIso).length,"post")} in the next 7 days`
     :view==="library"?plural(posts.length,"piece")+" of content"
     :view==="approvals"?(awaiting.length+awaitingEmails.length?`${awaiting.length+awaitingEmails.length} waiting for review`:"Nothing waiting for review")
@@ -686,16 +691,18 @@ export default function Home() {
         <div className="welcome"><div><p className="pageContext"><span className="clientLogo">{currentClient?.logo_url?<img src={currentClient.logo_url} alt=""/>:<b>{currentClient?.name?.[0]||"?"}</b>}</span><b>{currentClient?.name}</b>{pageContext&&<span>{pageContext}</span>}</p><h1>{view==="feed"?"Your visual grid":view==="calendar"?"The calendar":view==="library"?"Creative archive":view==="approvals"?"Content approvals":view==="team"?"Your team":view==="bio"?"Link in bio":view==="email"?"Email marketing":view==="brand"?"Brand kit":"Your team checklist"}</h1><p className="muted">{view==="feed"?"Compose your next chapter, one post at a time.":view==="calendar"?"A clear view of what's coming up.":view==="library"?"All your creative assets, in one place.":view==="approvals"?"Everything waiting for approval, in one place.":view==="team"?"Decide who can see and work on your calendar.":view==="bio"?"One page for your Instagram bio: menu, locations, ordering.":view==="email"?"Plan every send, keep the voice on brand, and track what works.":view==="brand"?"Everything the team needs to work with this client, in one place.":"Small steps, beautifully organized."}</p></div><div className="welcomeSide"><span className="deskOnly">{(!isApprover||view==="todo")&&view!=="team"&&view!=="bio"&&view!=="email"&&view!=="brand"&&<button className="primary compact" onClick={()=>view==="todo"?openTask():openNew(view==="feed"&&feedMode==="stories"?{format:"Story"}:undefined)}><Plus size={16}/> {view==="todo"?"Add task":"Add content"}</button>}</span>{view==="bio"||view==="brand"?null:view==="email"?<div className="stats"><div><b>{emails.filter(e=>e.status!=="Sent").length}</b><small>planned</small></div><div><b>{emails.filter(e=>e.status==="Awaiting approval").length}</b><small>awaiting</small></div><div><b>{emails.filter(e=>e.status==="Sent").length}</b><small>sent</small></div></div>:view==="team"?<div className="stats"><div><b>{members.length}</b><small>MEMBERS</small></div><div><b>{pendingPeople.length}</b><small>REQUESTS</small></div></div>:view==="approvals"?<div className="stats"><div><b>{awaiting.length+awaitingEmails.length}</b><small>waiting</small></div><div><b>{sessionReviewed.filter(r=>r.decision==="Approved").length}</b><small>approved now</small></div><div><b>{sessionReviewed.filter(r=>r.decision!=="Approved").length}</b><small>changes asked</small></div></div>:view==="todo"?<div className="stats"><div><b>{tasks.length}</b><small>tasks</small></div><div><b>{tasks.filter(t=>t.status!=="Done").length}</b><small>open</small></div><div><b>{tasks.filter(t=>t.status==="Done").length}</b><small>completed</small></div></div>
           :<div className="stats"><div><b>{nextPostLabel}</b><small>next post</small></div><div><b>{weekCount}</b><small>in the next 7 days</small></div><div><b>{awaitingAll}</b><small>awaiting approval</small></div></div>}</div></div>
         {loading?<p className="muted">Loading your workspace…</p>:<>
-          {view==="feed"&&<><div className="sectionHead feedHead"><div><h2>{feedMode==="stories"?"Stories":"Feed preview"}</h2></div>
+          {view==="feed"&&<><div className="sectionHead feedHead"><div><h2>{feedMode==="stories"?"Stories":feedMode==="instagram"?"Live on Instagram":"Feed preview"}</h2></div>
             <div className="feedControls">
               <div className="segmented" role="tablist" aria-label="Feed view">
                 <button role="tab" aria-selected={feedMode==="grid"} className={feedMode==="grid"?"on":""} onClick={()=>setFeedMode("grid")}><LayoutGrid size={14}/> Grid</button>
                 <button role="tab" aria-selected={feedMode==="phone"} className={feedMode==="phone"?"on":""} onClick={()=>setFeedMode("phone")}><Smartphone size={14}/> Phone</button>
                 <button role="tab" aria-selected={feedMode==="stories"} className={feedMode==="stories"?"on":""} onClick={()=>setFeedMode("stories")}><Film size={14}/> Stories</button>
+                <button role="tab" aria-selected={feedMode==="instagram"} className={feedMode==="instagram"?"on":""} onClick={()=>setFeedMode("instagram")}><Instagram size={14}/> Live</button>
               </div>
-              {feedMode!=="stories"&&<button className={"chipButton"+(showColors?" on":"")} aria-pressed={showColors} onClick={()=>setShowColors(v=>!v)}><Palette size={14}/> Colors</button>}
+              {(feedMode==="grid"||feedMode==="phone")&&<button className={"chipButton"+(showColors?" on":"")} aria-pressed={showColors} onClick={()=>setShowColors(v=>!v)}><Palette size={14}/> Colors</button>}
             </div></div>
-            {feedMode==="stories"?<StoriesView stories={stories as any} canEdit={!isApprover} onOpen={p=>openEdit(p as Post)} onAdd={date=>openNew({format:"Story",date})}/>
+            {feedMode==="instagram"&&workspaceId?<InstagramPanel workspaceId={workspaceId} clientName={currentClient?.name||"This client"} canConnect={canManage} canSync={role==="owner"||role==="admin"||role==="editor"} pending={igReturn} onPendingDone={()=>setIgReturn(null)} onNotice={setNotice}/>
+            :feedMode==="stories"?<StoriesView stories={stories as any} canEdit={!isApprover} onOpen={p=>openEdit(p as Post)} onAdd={date=>openNew({format:"Story",date})}/>
             :<>{gridPosts.length===0&&drafts.length===0?<div className="empty"><Images size={28}/><h3>A blank canvas.</h3><p>Upload your first creative to begin building the grid.</p>{!isApprover&&<button className="primary" onClick={()=>openNew()}><Plus size={16}/> Add your first post</button>}</div>
             :<><p className="muted feedHint">{isApprover?"Tap a post to preview it.":<><span className="deskOnly">Drag to rearrange, or drag a draft onto the grid.</span><span className="phoneText">Press and hold a post to move it.</span></>}</p>
             <FeedGrid fallbackLogo={currentClient?.logo_url||null} posts={gridPosts} drafts={isApprover?[]:drafts} disabled={isApprover} mode={feedMode==="phone"?"phone":"grid"} profile={profile} showColors={showColors} onOpen={p=>openEdit(p as Post)} onReorder={saveOrder} onPlaceDraft={placeDraft} onMoveToDrafts={moveToDrafts}/></>}</>}</>}
