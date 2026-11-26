@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
+import { esc, reviewEmail } from "@/lib/emails";
 
 export const runtime = "nodejs";
 
@@ -8,9 +9,6 @@ type Post = {
   id: string; title: string; publish_date: string | null; format: string;
   status: string; approval_note: string | null;
 };
-
-const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const day = (iso: string | null) =>
   iso ? new Date(iso + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "No date";
@@ -42,10 +40,13 @@ export async function POST(req: Request) {
 
   const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId : null;
   const { data: recipients, error: recError } = await supabase.rpc("notification_recipients", { kind, target_workspace: workspaceId });
-  let clientName = "";
+  let clientName = "", clientLogo: string | null = null, clientColor: string | null = null;
   if (workspaceId) {
-    const { data: ws } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
+    const { data: ws } = await supabase.from("workspaces").select("name,logo_url").eq("id", workspaceId).maybeSingle();
     clientName = (ws as { name?: string } | null)?.name || "";
+    clientLogo = (ws as { logo_url?: string | null } | null)?.logo_url || null;
+    const { data: prof } = await supabase.from("client_profiles").select("brand_colors").eq("workspace_id", workspaceId).maybeSingle();
+    clientColor = ((prof as { brand_colors?: string[] } | null)?.brand_colors || [])[0] || null;
   }
   if (recError) return NextResponse.json({ error: recError.message }, { status: 403 });
   const to = ((recipients || []) as { email: string }[]).map(r => r.email).filter(Boolean);
@@ -76,36 +77,23 @@ export async function POST(req: Request) {
   const link = workspaceId && /^[0-9a-f-]{36}$/i.test(workspaceId)
     ? `${appUrl}/?client=${workspaceId}${kind === "submitted" ? "&view=approvals" : ""}` : appUrl;
   const sender = userData.user.email || "Content Atelier";
-  const rows = posts.map(p => {
-    const note = p.approval_note ? `<div style="color:#8d5148;font-size:13px;margin-top:4px">“${esc(p.approval_note)}”</div>` : "";
-    const status = kind === "reviewed"
-      ? `<td style="padding:10px 0;border-bottom:1px solid #e6dbd1;font-size:12px;color:${p.status === "Approved" ? "#62813b" : "#8d5148"};white-space:nowrap;text-align:right">${esc(p.status)}</td>` : "";
-    return `<tr><td style="padding:10px 12px 10px 0;border-bottom:1px solid #e6dbd1;font-size:12px;color:#8a7570;white-space:nowrap">${esc(day(p.publish_date))}</td><td style="padding:10px 0;border-bottom:1px solid #e6dbd1;font-size:14px;color:#3a1c22"><b>${esc(p.title)}</b> <span style="color:#8a7570">· ${esc(p.format)}</span>${note}</td>${status}</tr>`;
-  }).join("");
-
-  let subject: string, intro: string, button: string;
+  let subject: string, intro: string;
   if (kind === "submitted") {
     const period = body.periodStart && body.periodEnd ? `${day(body.periodStart)} – ${day(body.periodEnd)}` : "the next two weeks";
     subject = `${clientName ? clientName + ": " : ""}${posts.length} item${posts.length === 1 ? "" : "s"} ready for your approval (${period})`;
     intro = `${esc(sender)} sent <b>${posts.length} item${posts.length === 1 ? "" : "s"}</b> for ${esc(period)} for your approval.`;
-    button = "Review in the studio";
   } else {
     const approved = posts.filter(p => p.status === "Approved").length;
     const changes = posts.filter(p => p.status === "Changes requested").length;
     const parts = [approved ? `${approved} approved` : "", changes ? `${changes} with changes requested` : ""].filter(Boolean).join(", ");
     subject = `${clientName ? clientName + ": " : ""}content review, ${parts || "update"}`;
     intro = `${esc(sender)} reviewed your content: <b>${esc(parts || "update")}</b>.`;
-    button = "Open the studio";
   }
 
-  const html = `<div style="background:#f8ece3;padding:30px 12px;font-family:Helvetica,Arial,sans-serif">
-<div style="max-width:560px;margin:auto;background:#fef8f3;border:1px solid #e6dbd1;padding:30px">
-<div style="font-size:10px;letter-spacing:2px;color:#967d79">${esc((clientName ? clientName + " · " : "").toUpperCase())}CONTENT ATELIER</div>
-<h1 style="font-family:Georgia,serif;font-weight:400;color:#651321;font-size:26px;margin:12px 0">${esc(subject)}</h1>
-<p style="font-size:14px;color:#3a1c22;line-height:1.5">${intro}</p>
-<table style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
-<a href="${esc(link)}" style="display:inline-block;background:#651321;color:#fffaf1;text-decoration:none;padding:12px 18px;font-size:12px;letter-spacing:1px;text-transform:uppercase">${button}</a>
-</div></div>`;
+  const html = reviewEmail({
+    appUrl, link, clientName: clientName || "Your client", clientLogo, clientColor, kind, subject, introHtml: intro, sender,
+    items: posts.map(p => ({ title: p.title, date: day(p.publish_date), format: p.format, status: p.status, note: p.approval_note }))
+  });
   const text = `${subject}\n\n${posts.map(p => `- ${day(p.publish_date)}: ${p.title}${kind === "reviewed" ? ` — ${p.status}` : ""}${p.approval_note ? ` ("${p.approval_note}")` : ""}`).join("\n")}\n\n${link}`;
 
   try {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import { inviteEmail } from "@/lib/inviteEmail";
+import { inviteEmail } from "@/lib/emails";
 
 export const runtime = "nodejs";
 
