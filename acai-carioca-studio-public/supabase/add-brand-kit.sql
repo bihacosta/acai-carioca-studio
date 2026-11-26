@@ -43,5 +43,7 @@ create policy "uploader or managers remove brand files" on public.brand_files
   for delete to authenticated
   using (created_by = auth.uid() or public.managed_workspace(workspace_id) is not null);
 
+revoke all on public.brand_files from anon;
+revoke update on public.brand_files from authenticated;
 grant select, insert, delete on public.brand_files to authenticated;
 grant update (name, category) on public.brand_files to authenticated;
