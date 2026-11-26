@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { Mail, CheckSquare, CalendarDays } from "lucide-react";
 import { thumbOf, framing, type FeedPost } from "./FeedGrid";
 
@@ -40,8 +40,8 @@ export default function CalendarBoard({ month, posts, tasks, emails = [], canEdi
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 6 } })
   );
   const monthDate = new Date(month + "-01T12:00:00");
   const days = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();

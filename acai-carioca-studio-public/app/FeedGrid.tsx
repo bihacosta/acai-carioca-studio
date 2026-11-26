@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor, closestCenter, pointerWithin, useDroppable, type CollisionDetection,
+  DndContext, DragOverlay, MouseSensor, TouchSensor, KeyboardSensor, closestCenter, pointerWithin, useDroppable, type CollisionDetection,
   useSensor, useSensors, type DragEndEvent, type DragStartEvent, type DropAnimation, defaultDropAnimationSideEffects
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -98,8 +98,8 @@ export default function FeedGrid({ posts, drafts, disabled, mode, profile, showC
   }, [showColors, posts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
   const all = [...posts, ...drafts];
