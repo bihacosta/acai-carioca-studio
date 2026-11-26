@@ -21,7 +21,7 @@ const SOCIALS: { key: string; label: string; hint: string }[] = [
   { key: "google", label: "Google Business", hint: "Link to the listing" }
 ];
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "Meta Business Suite", "Square", "Google Business", "Canva", "Website", "Email marketing", "Other"];
-const DEFAULT_COLORS = ["#4c1e2f"];
+const DEFAULT_COLORS = ["#651321"];
 
 export const emptyProfile = (id = ""): ClientProfile => ({
   workspace_id: id, tagline: null, brand_colors: [], brand_fonts: null, voice_notes: null, website: null, socials: {},
@@ -74,7 +74,7 @@ export default function ClientStudio({ client, profile, userId, onClose, onSaved
     const clean = name.trim();
     if (!clean) { setError("Give the client a name."); nameRef.current?.focus(); return; }
     const badColor = colors.find(c => !hexOk(c));
-    if (badColor) { setError(`“${badColor}” isn't a colour code. Use the format #4c1e2f.`); return; }
+    if (badColor) { setError(`“${badColor}” isn't a colour code. Use the format #651321.`); return; }
     setBusy(true); setError("");
     try {
       let id = client?.id;
@@ -115,13 +115,13 @@ export default function ClientStudio({ client, profile, userId, onClose, onSaved
     }
   }
 
-  const lead = hexOk(colors[0] || "") ? colors[0] : "#4c1e2f";
+  const lead = hexOk(colors[0] || "") ? colors[0] : "#651321";
   const socialList = SOCIALS.filter(s => (p.socials[s.key] || "").trim());
 
   return (
     <div className="studio" role="dialog" aria-modal="true" aria-label={isNew ? "New client" : `${client!.name} details`}>
       <header className="studioTop">
-        <div className="brand"><span className="brandMark"><img src="/brand/atelier.png" alt="" /></span><div><b>content atelier.</b><small>{isNew ? "NEW CLIENT" : "CLIENT DETAILS"}</small></div></div>
+        <div className="brand"><img className="brandIcon" src="/brand/atelier-mark.png" alt="" /><div className="wordmark"><b>Content <i>Atelier</i></b><small>{isNew ? "New client" : "Client details"}</small></div></div>
         <div className="studioActions">
           <button className="secondary" onClick={onClose} disabled={busy}>Cancel</button>
           <button className="primary" onClick={save} disabled={busy || uploading}><Check size={15} /> {busy ? "Saving…" : isNew ? "Create client" : "Save details"}</button>
@@ -168,7 +168,7 @@ export default function ClientStudio({ client, profile, userId, onClose, onSaved
                 <input className="hexInput" aria-label={`Colour ${i + 1} code`} value={c} onChange={e => setColors(cur => cur.map((x, j) => j === i ? e.target.value.trim() : x))} />
                 {colors.length > 1 && <button className="chipRemove" aria-label={`Remove colour ${i + 1}`} onClick={() => setColors(cur => cur.filter((_, j) => j !== i))}><X size={13} /></button>}
               </div>)}
-              {colors.length < 6 && <button className="addChip" onClick={() => setColors(cur => [...cur, "#efe4d2"])}><Plus size={14} /> Add colour</button>}
+              {colors.length < 6 && <button className="addChip" onClick={() => setColors(cur => [...cur, "#f2e1d8"])}><Plus size={14} /> Add colour</button>}
             </div>
             <label>Fonts<input value={p.brand_fonts || ""} onChange={e => set("brand_fonts", e.target.value)} placeholder="e.g. Recoleta for titles, Inter for text" /></label>
             <label>Voice and rules<textarea rows={3} value={p.voice_notes || ""} onChange={e => set("voice_notes", e.target.value)} placeholder="How the brand talks, words to use or avoid" /></label>

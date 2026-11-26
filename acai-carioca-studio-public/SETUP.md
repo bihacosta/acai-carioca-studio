@@ -168,3 +168,9 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
 - Reels have a "Video link" field in the post editor. The approver sees a "Watch the video" button on the approval card
   and in the post preview; it opens the link in a new tab. Make sure the link is shared (e.g. "Anyone with the link").
 - Database: `supabase/add-reel-video-link.sql` adds `posts.video_url` (already applied).
+
+## 19. Content Atelier brand
+- Logo: `public/brand/atelier-mark.png` (layered burgundy play mark) and `public/brand/atelier-logo.png` (full logo).
+  App icons: `app/icon.png`, `app/apple-icon.png`.
+- Colours (in `app/globals.css`): burgundy `#651321`, lighter burgundy `#892238`, deep `#560a1e`, rose `#e4a6a3`,
+  blush `#f3cdc9`, cream background `#fbf4ee` / `#fef8f3`. Main buttons use the logo's burgundy gradient.
