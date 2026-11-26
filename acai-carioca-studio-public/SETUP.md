@@ -154,3 +154,8 @@ Run `supabase/add-multi-client.sql` once (already applied to the production proj
 - People with access to more than one client now land on "Who are we working on today?" and pick a client there.
 - People with only one client (like an approver) go straight into it.
 - "All clients" in the client menu (sidebar, or More on the phone) brings the list back.
+
+## 18. Reel video link
+- Reels have a "Video link" field in the post editor. The approver sees a "Watch the video" button on the approval card
+  and in the post preview; it opens the link in a new tab. Make sure the link is shared (e.g. "Anyone with the link").
+- Database: `supabase/add-reel-video-link.sql` adds `posts.video_url` (already applied).

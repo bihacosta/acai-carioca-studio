@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { uploadImage } from "@/lib/media";
-import { X, Upload, MessageSquare, Hash, FileText, Trash2, ChevronLeft, ChevronRight, Plus, Move, Send } from "lucide-react";
+import { X, Upload, MessageSquare, Hash, FileText, Trash2, ChevronLeft, ChevronRight, Plus, Move, Send, Play } from "lucide-react";
 
 export type EditorPost = {
   id: string; title: string; image_url: string; publish_date: string | null; format: string; location: string;
   pillar: string; status: string; caption: string | null; sort_order: number;
   approval_note?: string | null; reviewed_at?: string | null;
-  crop_x?: number; crop_y?: number; extra_images?: string[]; cover_url?: string | null; on_grid?: boolean;
+  crop_x?: number; crop_y?: number; extra_images?: string[]; cover_url?: string | null; on_grid?: boolean; video_url?: string | null;
 };
 export type Snippet = { id: string; kind: "caption" | "hashtags"; name: string; body: string };
 type Comment = { id: string; author_id: string; author_email: string | null; body: string; created_at: string };
@@ -107,6 +107,7 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
   const [images, setImages] = useState<{ url: string; file?: File }[]>(() =>
     post ? [post.image_url, ...(post.extra_images || [])].filter(Boolean).map(url => ({ url })) : []);
   const [cover, setCover] = useState<{ url: string; file?: File } | null>(post?.cover_url ? { url: post.cover_url } : null);
+  const [videoUrl, setVideoUrl] = useState(post?.video_url || "");
   const [slide, setSlide] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -166,10 +167,13 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
       for (const img of images) urls.push(img.file ? await uploadImage(img.file, userId) : img.url);
       let cover_url: string | null = null;
       if (form.format === "Reel" && cover) cover_url = cover.file ? await uploadImage(cover.file, userId) : cover.url;
+      const link = videoUrl.trim();
+      const video_url = form.format === "Reel" && link ? (/^https?:\/\//i.test(link) ? link : "https://" + link) : null;
+      if (video_url) { try { new URL(video_url); } catch { throw new Error("The video link doesn't look right. Paste the full link, for example https://drive.google.com/…"); } }
       const { date, ...fields } = form;
       const payload = {
         ...fields, caption: form.caption || null, publish_date: date || null,
-        image_url: urls[0] || "", extra_images: urls.slice(1), cover_url,
+        image_url: urls[0] || "", extra_images: urls.slice(1), cover_url, video_url,
         crop_x: crop.x, crop_y: crop.y, on_grid: isStory ? true : onGrid, workspace_id: workspaceId
       };
       const result = post
@@ -251,6 +255,14 @@ export default function PostEditor({ post, preset, locations = [], isApprover, w
               </div>
             </div>
           )}
+          {form.format === "Reel" && (readOnly
+            ? (post?.video_url && /^https?:\/\//i.test(post.video_url)
+              ? <a className="videoLink" href={post.video_url} target="_blank" rel="noopener noreferrer"><Play size={16} /> Watch the video<small>Opens in a new tab</small></a>
+              : <p className="muted videoMissing">No video link yet.</p>)
+            : <label className="videoField">Video link
+                <input type="url" inputMode="url" value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="Google Drive, Dropbox, Frame.io or YouTube link" />
+                <small>Make sure the link is shared so the approver can open it.</small>
+              </label>)}
 
           <label className="captionLabel">Caption / creative notes
             <textarea ref={captionRef} rows={5} value={form.caption} onChange={e => setForm({ ...form, caption: e.target.value })} placeholder="Caption, CTA or notes for the team…" />

@@ -9,7 +9,7 @@ import StoriesView from "./StoriesView";
 import LinkInBioEditor from "./LinkInBioEditor";
 import TaskBoard from "./TaskBoard";
 import EmailPlanner, { type EmailCampaign, seriesLabel } from "./EmailPlanner";
-import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail, Link2, MoreHorizontal, Palette, Smartphone, Film, ChevronDown } from "lucide-react";
+import { CalendarDays, Images, LayoutGrid, ListChecks, LogOut, Plus, Search, Upload, X, Check, Trash2, ClipboardList, BadgeCheck, MessageSquare, ChevronLeft, ChevronRight, Users, UserPlus, Clock, Mail, Link2, MoreHorizontal, Palette, Smartphone, Film, ChevronDown, Play } from "lucide-react";
 
 type Task = {
   id: string; title: string; details: string | null; list_name: string; due_date: string | null;
@@ -22,7 +22,7 @@ type Post = {
   format: string; location: string; pillar: string; status: string;
   caption: string | null; sort_order: number;
   approval_note?: string | null; reviewed_at?: string | null;
-  crop_x?: number; crop_y?: number; extra_images?: string[]; cover_url?: string | null; on_grid?: boolean;
+  crop_x?: number; crop_y?: number; extra_images?: string[]; cover_url?: string | null; on_grid?: boolean; video_url?: string | null;
 };
 
 const pillars = ["Product","Lifestyle","Promotion","Brand Awareness","Community"];
@@ -591,6 +591,7 @@ export default function Home() {
                   <p className="eyebrow">{prettyDate(p.publish_date)} · {p.format} · {p.location}</p>
                   <h3>{p.title}</h3>
                   <span className="muted">{p.pillar}</span>
+                  {p.format==="Reel"&&(p.video_url&&/^https?:\/\//i.test(p.video_url)?<a className="videoLink" href={p.video_url} target="_blank" rel="noopener noreferrer"><Play size={16}/> Watch the video<small>Opens in a new tab</small></a>:<p className="muted videoMissing">No video link yet.</p>)}
                   {p.caption?<p className="reviewCaption">{p.caption}</p>:<p className="reviewCaption muted">No caption yet.</p>}
                   {p.approval_note&&<p className="previousNote"><MessageSquare size={12}/> Previous feedback: {p.approval_note}</p>}
                   {canReview&&(changesFor===p.id?<div className="changesForm"><textarea rows={3} autoFocus value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="What should change? (caption, image, date…)"/><div className="modalActions"><button className="secondary" onClick={()=>{setChangesFor(null);setReviewNote("");}}>Cancel</button><button className="primary" disabled={busy||!reviewNote.trim()} onClick={()=>review([p.id],"Changes requested",reviewNote)}>Send feedback</button></div></div>
