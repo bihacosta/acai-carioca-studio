@@ -1041,3 +1041,12 @@ body{background:var(--bg);font-family:var(--ui);-webkit-font-smoothing:antialias
 .entryChoice{padding:22px 22px 20px;background:#fffdfa}
 .entryChoice svg{opacity:.75;margin-top:5px}
 .entryBack{display:inline-flex;align-items:center;gap:4px;margin:0 0 4px;font-size:12px}
+
+/* Phone: clients page starts right below the logo (no empty gap) */
+@media(max-width:640px){
+  .pickerTop{padding-top:14px;padding-bottom:6px}
+  .pickerBody{padding-top:12px}
+  .pickerBody h1{margin-bottom:6px}
+  .pickerLead{margin:8px 0 22px}
+  .pickerAdmin{margin:-4px 0 20px}
+}
